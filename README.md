@@ -4,7 +4,7 @@
 
 Install dependencies
 
-```bash 
+```bash
 pip install -r requirements.txt
 ```
 
@@ -29,3 +29,14 @@ Analysis of trained model
 ```bash
 python main.py analyze <model-identifier> <input-path>
 ```
+
+Video Prediction
+
+```bash
+python main.py video <model-identifier> <output-path>
+```
+
+optional arguments:
+- `<webcam>` if using webcam
+- `<input>` set a video file as input
+- `<show-processing>` show the processing of the video

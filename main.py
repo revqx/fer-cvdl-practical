@@ -8,6 +8,7 @@ import wandb
 from analyze import accuracies, confusion_matrix
 from train import train_model
 from inference import apply_model
+from video_prediction import make_video_prediction
 
 load_dotenv()
 app = typer.Typer()
@@ -59,6 +60,14 @@ def analyze(model_name: str, data_path: str):
     print(conf_matrix)
     print(top_n)
 
+@app.command()
+def video(model_name: str, output_path: str, webcam: bool = False, input: str = "", show_processing: bool = True):
+    if not webcam and not input:
+        raise typer.BadParameter("Please specify a video input when not using the camera.")
+
+    timestamp = datetime.now().strftime("%Y%m%dT%H%M%S")
+    output_file = os.path.join(output_path, f"{model_name}-{timestamp}.avi")
+    make_video_prediction(model_name, webcam, input, output_file, show_processing)
 
 if __name__ == "__main__":
     app()
