@@ -105,6 +105,8 @@ def train_val_dataloaders(dataset, config):
     train_data, val_data = train_test_split(dataset, test_size=config["validation_split"])
 
     sampler = None
+    if config.get("sampler") not in [None, False, "", "uniform"]:
+        raise ValueError(f"Invalid sampler {config['sampler']}.")
     if config.get("sampler") == "uniform":
         # count labels and create sampler
         y = [label for _, label in train_data]
