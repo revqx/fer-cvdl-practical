@@ -13,6 +13,10 @@ from preprocessing import select_transform
 
 
 def train_model(config: dict):
+    path = os.getenv('MODEL_SAVE_PATH')
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"Directory {path} not found. Will not be able to save model.")
+
     # Set device
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -32,10 +36,6 @@ def train_model(config: dict):
 
     # Train and evaluate the model
     training_loop(model, train_loader, val_loader, criterion, optimizer, config)
-
-    path = os.getenv('MODEL_SAVE_PATH')
-    if not os.path.exists(path):
-        raise FileNotFoundError(f"Directory {path} not found. Will not be able to save model.")
 
     # Save model and transforms
     timestamp = datetime.now().strftime("%Y%m%dT%H%M%S")
