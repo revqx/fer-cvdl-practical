@@ -22,6 +22,7 @@ DEFAULT_TRAIN_CONFIG = {
     "black_and_white": False,  # switches between 1 and 3 channels
     "validation_split": 0.2,
     "learning_rate": 0.001,
+    "sampler": "uniform",  # Options: uniform, None
     "epochs": 7,
     "batch_size": 64,
     "loss_function": "CrossEntropyLoss",
