@@ -30,7 +30,7 @@ Analysis of trained model
 python main.py analyze <model-identifier> <input-path>
 ```
 
-Video Prediction
+Video Prediction (make sure download the haar cascade from [here](https://github.com/opencv/opencv/blob/master/data/haarcascades/haarcascade_frontalface_default.xml) and put it into the `/cascades` folder)
 
 ```bash
 python main.py video <model-identifier> <output-path>
