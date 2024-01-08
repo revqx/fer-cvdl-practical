@@ -1,5 +1,6 @@
 import cv2
 import torch
+import os
 
 from inference import load_model_and_preprocessing
 from utils import LABEL_TO_STR
@@ -91,7 +92,10 @@ def main_loop(cap, face_cascade, model, device, preprocessing, show_processing):
 
 def make_video_prediction(model_name: str, webcam: bool, video_input: str, output_file: str, show_processing: bool):
     """Make video prediction using the model with the given name"""
-    face_cascade = cv2.CascadeClassifier('cascades/haarcascade_frontalface_default.xml')
+    if not os.path.isfile(FACE_CASCADE_PATH):
+        raise IOError("Please download the haar cascade file from https://github.com/opencv/opencv/blob/master/data/haarcascades/haarcascade_frontalface_default.xml and put it into /cascades")
+
+    face_cascade = cv2.CascadeClassifier(FACE_CASCADE_PATH)
 
     model, preprocessing, device = initialize_model(model_name)
 
