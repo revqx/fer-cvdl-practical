@@ -12,7 +12,27 @@ from inference import apply_model
 load_dotenv()
 app = typer.Typer()
 
+# Default config for training should not be altered by the user
 DEFAULT_TRAIN_CONFIG = {
+    "model_name": "LeNet",
+    # Options: LeNet
+    "model_description": "",
+    "train_data": "AffectNet",
+    "preprocessing": "StandardizeRGB()",  # everything done on the 64x64 tensors
+    # Options: StandardizeGray(), StandardizeRGB()
+    "black_and_white": False,  # switches between 1 and 3 channels
+    "validation_split": 0.2,
+    "learning_rate": 0.001,
+    "sampler": "uniform",  # Options: uniform, None
+    "epochs": 7,
+    "batch_size": 64,
+    "loss_function": "CrossEntropyLoss",
+    "optimizer": "Adam",
+    "device": "cpu",
+}
+
+# If you want to use a custom config, change this one as you like and pass it to the train_model function
+CUSTOM_TRAIN_CONFIG = {
     "model_name": "LeNet",
     # Options: LeNet
     "model_description": "",
@@ -32,8 +52,8 @@ DEFAULT_TRAIN_CONFIG = {
 
 
 @app.command()
-def train(offline: bool = False):
-    config = DEFAULT_TRAIN_CONFIG
+def train(offline: bool = False, config: dict = CUSTOM_TRAIN_CONFIG):
+    config = config
     # disable wandb if offline
     os.environ['WANDB_MODE'] = 'offline' if offline else 'online'
     wandb.init(project="cvdl", config=config)
