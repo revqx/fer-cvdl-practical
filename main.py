@@ -52,8 +52,8 @@ CUSTOM_TRAIN_CONFIG = {
 
 
 @app.command()
-def train(offline: bool = False, config: dict = CUSTOM_TRAIN_CONFIG):
-    config = config
+def train(offline: bool = False):
+    config = CUSTOM_TRAIN_CONFIG
     # disable wandb if offline
     os.environ['WANDB_MODE'] = 'offline' if offline else 'online'
     wandb.init(project="cvdl", config=config)
