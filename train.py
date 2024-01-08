@@ -1,9 +1,10 @@
 import os
 from datetime import datetime
 
+import numpy as np
 import torch
 from sklearn.model_selection import train_test_split
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, WeightedRandomSampler
 import wandb
 from tqdm import tqdm
 
@@ -103,8 +104,20 @@ def training_loop(model, train_loader, val_loader, criterion, optimizer, config)
 def train_val_dataloaders(dataset, config):
     train_data, val_data = train_test_split(dataset, test_size=config["validation_split"])
 
+    sampler = None
+    if config.get("sampler") not in [None, False, "", "uniform"]:
+        raise ValueError(f"Invalid sampler {config['sampler']}.")
+    if config.get("sampler") == "uniform":
+        # count labels and create sampler
+        y = [label for _, label in train_data]
+        class_counts = np.bincount(y)
+        class_weights = 1. / class_counts
+        weights = class_weights[y]
+        # Create the sampler
+        sampler = WeightedRandomSampler(weights, len(weights))
+
     # Create the dataloaders
-    train_loader = DataLoader(train_data, batch_size=config["batch_size"], shuffle=True)
+    train_loader = DataLoader(train_data, batch_size=config["batch_size"], sampler=sampler)
     val_loader = DataLoader(val_data, batch_size=config["batch_size"], shuffle=False)
 
     return train_loader, val_loader

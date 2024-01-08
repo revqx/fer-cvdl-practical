@@ -13,9 +13,10 @@ from video_prediction import make_video_prediction
 load_dotenv()
 app = typer.Typer()
 
+# Default config for training should not be altered by the user
 DEFAULT_TRAIN_CONFIG = {
     "model_name": "LeNet",
-    # Options: LeNet
+    # Options: LeNet, ResNet18
     "model_description": "",
     "train_data": "AffectNet",
     "preprocessing": "StandardizeRGB()",  # everything done on the 64x64 tensors
@@ -23,6 +24,7 @@ DEFAULT_TRAIN_CONFIG = {
     "black_and_white": False,  # switches between 1 and 3 channels
     "validation_split": 0.2,
     "learning_rate": 0.001,
+    "sampler": "uniform",  # Options: uniform, None
     "epochs": 7,
     "batch_size": 64,
     "loss_function": "CrossEntropyLoss",
@@ -30,10 +32,29 @@ DEFAULT_TRAIN_CONFIG = {
     "device": "cpu",
 }
 
+# If you want to use a custom config, change this one as you like and pass it to the train_model function
+CUSTOM_TRAIN_CONFIG = {
+    "model_name": "ResNet18",
+    # Options: LeNet, ResNet18
+    "model_description": "",
+    "train_data": "AffectNet",
+    "preprocessing": "StandardizeRGB()",  # everything done on the 64x64 tensors
+    # Options: StandardizeGray(), StandardizeRGB()
+    "black_and_white": False,  # switches between 1 and 3 channels
+    "validation_split": 0.2,
+    "learning_rate": 0.001,
+    "sampler": "uniform",  # Options: uniform, None
+    "epochs": 10,
+    "batch_size": 32,
+    "loss_function": "CrossEntropyLoss",
+    "optimizer": "Adam",
+    "device": "cuda:0", # Options: cpu, cuda:0, cuda:1, ...
+}
+
 
 @app.command()
 def train(offline: bool = False):
-    config = DEFAULT_TRAIN_CONFIG
+    config = CUSTOM_TRAIN_CONFIG
     # disable wandb if offline
     os.environ['WANDB_MODE'] = 'offline' if offline else 'online'
     wandb.init(project="cvdl", config=config)
