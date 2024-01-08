@@ -4,4 +4,4 @@ __pycache__
 models/*
 wandb
 
-git rm data/*
+data/*
