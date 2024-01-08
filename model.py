@@ -42,8 +42,25 @@ class LeNet(nn.Module):
         x = F.relu(self.fc1(x))
         x = self.fc2(x)
         return x
+    
+    
+class ResNet18(nn.Module):
+    def __init__(self, num_classes=6, input_size=64):
+        super(ResNet18, self).__init__()
+        self.input_size = input_size
+        self.model = models.resnet18(weights='DEFAULT', include_top=False, input_shape=(64, 64, 3), pooling='avg', classes=6)
+        self.model.fc = nn.Linear(512, 206)
+        self.model.fc = nn.Dropout(p=0.5)
+        self.model.fc2 = nn.Linear(206, num_classes)
+        
+    def forward(self, x):
+        x = self.model(x)
+        x = F.relu(self.model.fc(x))
+        x = self.model.fc2(x)
+        return x
 
 
 MODELS = {
-    'LeNet': LeNet
+    'LeNet': LeNet,
+    'ResNet18': ResNet18
 }

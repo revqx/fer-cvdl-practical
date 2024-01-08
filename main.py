@@ -15,7 +15,7 @@ app = typer.Typer()
 # Default config for training should not be altered by the user
 DEFAULT_TRAIN_CONFIG = {
     "model_name": "LeNet",
-    # Options: LeNet
+    # Options: LeNet, ResNet18
     "model_description": "",
     "train_data": "AffectNet",
     "preprocessing": "StandardizeRGB()",  # everything done on the 64x64 tensors
@@ -33,8 +33,8 @@ DEFAULT_TRAIN_CONFIG = {
 
 # If you want to use a custom config, change this one as you like and pass it to the train_model function
 CUSTOM_TRAIN_CONFIG = {
-    "model_name": "LeNet",
-    # Options: LeNet
+    "model_name": "ResNet18",
+    # Options: LeNet, ResNet18
     "model_description": "",
     "train_data": "AffectNet",
     "preprocessing": "StandardizeRGB()",  # everything done on the 64x64 tensors
@@ -43,11 +43,11 @@ CUSTOM_TRAIN_CONFIG = {
     "validation_split": 0.2,
     "learning_rate": 0.001,
     "sampler": "uniform",  # Options: uniform, None
-    "epochs": 7,
-    "batch_size": 64,
+    "epochs": 10,
+    "batch_size": 32,
     "loss_function": "CrossEntropyLoss",
     "optimizer": "Adam",
-    "device": "cpu",
+    "device": "cuda:0", # Options: cpu, cuda:0, cuda:1, ...
 }
 
 
