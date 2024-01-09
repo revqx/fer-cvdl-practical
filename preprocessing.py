@@ -2,7 +2,7 @@ import torch
 from torchvision.transforms import v2
 
 
-def select_transform(transforms_str):
+def select_preprocessing(transforms_str):
     """Select the appropriate transforms for the dataset."""
     if not transforms_str:
         return None

@@ -34,14 +34,14 @@ def apply_model(model_name: str, data_path: str):
     return model_id, results_df
 
 
-def load_images(path: str, resize=(64, 64)) -> [torch.Tensor]:
+def load_images(path: str) -> [torch.Tensor]:
     """Return list with (image_path, image_as_tensor) tuples."""
     image_files = glob.glob(os.path.join(path, "*.jpg"))
     images = []
     for image_file in image_files:
         images.append(Image.open(image_file))
     transform = v2.Compose(
-        [v2.Resize(resize),
+        [v2.Resize((64, 64)),
          v2.ToImage(),
          v2.ToDtype(torch.float32, scale=True),
          v2.Lambda(lambda x: x * 2 - 1)])

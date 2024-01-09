@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 from dataset import get_dataset
 from model import get_model
-from preprocessing import select_transform
+from preprocessing import select_preprocessing
 
 
 def train_model(config: dict):
@@ -19,10 +19,10 @@ def train_model(config: dict):
         raise FileNotFoundError(f"Directory {path} not found. Will not be able to save model.")
 
     # Set device
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    device = torch.device(config["device"])
 
     # Define the preprocessing
-    preprocessing = select_transform(config['preprocessing'])
+    preprocessing = select_preprocessing(config['preprocessing'])
 
     dataset = get_dataset(config["train_data"], preprocessing=preprocessing, black_and_white=config["black_and_white"])
     train_loader, val_loader = train_val_dataloaders(dataset, config)

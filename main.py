@@ -1,5 +1,6 @@
 from datetime import datetime
 
+import torch
 import typer
 from dotenv import load_dotenv
 import os
@@ -17,7 +18,7 @@ DEFAULT_TRAIN_CONFIG = {
     "model_name": "LeNet",
     # Options: LeNet, ResNet18
     "model_description": "",
-    "train_data": "AffectNet",
+    "train_data": "RAF-DB",
     "preprocessing": "StandardizeRGB()",  # everything done on the 64x64 tensors
     # Options: StandardizeGray(), StandardizeRGB()
     "black_and_white": False,  # switches between 1 and 3 channels
@@ -33,11 +34,11 @@ DEFAULT_TRAIN_CONFIG = {
 
 # If you want to use a custom config, change this one as you like and pass it to the train_model function
 CUSTOM_TRAIN_CONFIG = {
-    "model_name": "ResNet18",
+    "model_name": "LeNet",
     # Options: LeNet, ResNet18
     "model_description": "",
-    "train_data": "AffectNet",
-    "preprocessing": "StandardizeRGB()",  # everything done on the 64x64 tensors
+    "train_data": "RAF-DB",
+    "preprocessing": "",  # everything done on the 64x64 tensors
     # Options: StandardizeGray(), StandardizeRGB()
     "black_and_white": False,  # switches between 1 and 3 channels
     "validation_split": 0.2,
@@ -47,13 +48,17 @@ CUSTOM_TRAIN_CONFIG = {
     "batch_size": 32,
     "loss_function": "CrossEntropyLoss",
     "optimizer": "Adam",
-    "device": "cuda:0", # Options: cpu, cuda:0, cuda:1, ...
+    "device": "cpu", # Options: cpu, cuda:0, cuda:1, ...
 }
 
 
 @app.command()
 def train(offline: bool = False):
     config = CUSTOM_TRAIN_CONFIG
+    if (config["device"] == "cuda") and (not torch.cuda.is_available()):
+        config["device"] = "cpu"
+        print("CUDA not available. Using CPU instead.")
+
     # disable wandb if offline
     os.environ['WANDB_MODE'] = 'offline' if offline else 'online'
     wandb.init(project="cvdl", config=config)

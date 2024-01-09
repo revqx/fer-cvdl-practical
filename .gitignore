@@ -1,7 +1,8 @@
 .idea
+.DS_Store
+.env
 __pycache__
 
 models/*
-wandb
-
+wandb/*
 data/*
