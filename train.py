@@ -42,7 +42,7 @@ def train_model(config: dict):
 
     # Adam with beta1=0.9 and beta2=0.999
     optimizer = torch.optim.Adam(model.parameters(), lr=config["learning_rate"])
-    scheduler = ReduceLROnPlateau(optimizer, 'max', patience=3, verbose=True, factor=0.5)
+    scheduler = ReduceLROnPlateau(optimizer, 'min', patience=config["patience"], verbose=True)
 
     # Train and evaluate the model
     training_loop(model, train_loader, val_loader, criterion, optimizer, scheduler, config)
@@ -107,7 +107,6 @@ def training_loop(model, train_loader, val_loader, criterion, optimizer, schedul
         # Log all metrics for the epoch at once
         metrics['epoch'] = epoch
         wandb.log(metrics)
-
 
 
 def train_val_dataloaders(dataset, config):

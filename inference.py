@@ -37,6 +37,7 @@ def apply_model(model_name: str, data_path: str):
         image = image.to(device)
         if preprocessing:
             image = preprocessing(image)
+        image = image.unsqueeze(0)
         output = model(image).tolist()[0]
         results_df.loc[len(results_df)] = [file_name] + output
 
