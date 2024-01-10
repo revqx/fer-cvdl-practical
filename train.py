@@ -15,13 +15,15 @@ from model import get_model
 from preprocessing import select_preprocessing
 
 
-
 def train_model(config: dict):
     path = os.getenv('MODEL_SAVE_PATH')
     if not os.path.exists(path):
         raise FileNotFoundError(f"Directory {path} not found. Will not be able to save model.")
 
     # Set device
+    if (config["device"] == "cuda") and (not torch.cuda.is_available()):
+        config["device"] = "cpu"
+        print("CUDA not available. Using CPU instead.")
     device = torch.device(config["device"])
 
     # Define the preprocessing

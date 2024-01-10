@@ -1,4 +1,3 @@
-import glob
 import os
 
 import numpy as np
@@ -10,7 +9,7 @@ from PIL import Image
 from torchvision.transforms import v2
 from tqdm import tqdm
 from skimage.metrics import structural_similarity as ssim
-from utils import LABEL_TO_NUM, LABEL_TO_STR, load_images, label_from_path
+from utils import LABEL_TO_STR, LABEL_TO_NUM, load_images, label_from_path
 
 """
 It is important to note that the dataset class is responsible 
@@ -27,7 +26,7 @@ def get_dataset(name: str, preprocessing=None, black_and_white=False):
     datasets = {
         "AffectNet": AffectNet,
         "FER2013": Fer2013,
-        "RAF-DB": RAF_DB
+        "RAF-DB": RafDb
     }
     if name in datasets:
         return datasets[name](preprocessing=preprocessing,
@@ -69,7 +68,7 @@ class AffectNet(Dataset):
         # close the image after reading it
         with Image.open(img_path) as img:
             tensor = self.transform(img)
-        label = torch.tensor(int(self.annotations.loc[item, 'label']))
+        label = torch.tensor(LABEL_TO_NUM[self.annotations.loc[item, 'label']])
         if self.preprocessing:
             tensor = self.preprocessing(tensor)
         return tensor, label
@@ -91,7 +90,7 @@ class Fer2013(Dataset):
         raise NotImplemented()
 
 
-class RAF_DB(Dataset):
+class RafDb(Dataset):
     def __init__(self, preprocessing=None, black_and_white=False):
         """
         Initialize the RAF_DB dataset.
@@ -101,9 +100,8 @@ class RAF_DB(Dataset):
             black_and_white: If True, the images will be converted to grayscale.
 
         returns:
-            The training data of the RAFDB dataset since the validation data is already used for testing.
+            The training data of the RAF-DB dataset since the validation data is already used for testing.
         """
-
 
         root_dir = os.getenv('DATASET_RAF_DB_PATH')
         self.root_dir = root_dir
@@ -111,12 +109,16 @@ class RAF_DB(Dataset):
         if not os.path.exists(root_dir):
             raise FileNotFoundError(f"Directory {root_dir} not found. Could not load RAF-DB dataset.")
 
+        if black_and_white:
+            raise NotImplementedError("Black and white images are not yet supported for the RAF-DB dataset.")
+
         images = load_images(root_dir)
         train_labels = [label_from_path(path) for path, _ in images]
 
         self.annotations = pd.DataFrame({'pth': [path for path, _ in images], 'label': train_labels})
 
         self.root_dir = root_dir
+        self.preprocessing = preprocessing
         self.transform = v2.Compose(
             [v2.Resize((64, 64)),
              v2.ToImage(),
@@ -130,11 +132,14 @@ class RAF_DB(Dataset):
         img_path = self.annotations.loc[index, 'pth']
         y_label = torch.tensor(int(self.annotations.loc[index, 'label']))
 
+        image = None
         with Image.open(img_path) as img:
             if self.transform:
                 img = self.transform(img)
-
-        return img, y_label
+        image = img
+        if self.preprocessing:
+            image = self.preprocessing(image)
+        return image, y_label
 
 
 def compare_images(img1, img2, win_size=5):

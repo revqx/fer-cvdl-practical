@@ -1,12 +1,11 @@
 from datetime import datetime
 
-import torch
 import typer
 from dotenv import load_dotenv
 import os
 import wandb
 
-from analyze import accuracies, confusion_matrix
+from analyze import accuracies, confusion_matrix, analyze_run_and_upload
 from train import train_model
 from inference import apply_model
 from video_prediction import make_video_prediction
@@ -19,7 +18,7 @@ DEFAULT_TRAIN_CONFIG = {
     "model_name": "LeNet",
     # Options: LeNet, ResNet18
     "model_description": "",
-    "train_data": "RAF-DB",
+    "train_data": "AffectNet",  # Options: AffectNet, RAF_DB
     "preprocessing": "StandardizeRGB()",  # everything done on the 64x64 tensors
     # Options: StandardizeGray(), StandardizeRGB()
     "black_and_white": False,  # switches between 1 and 3 channels
@@ -33,38 +32,35 @@ DEFAULT_TRAIN_CONFIG = {
     "device": "cpu",
 }
 
-# If you want to use a custom config, change this one as you like and pass it to the train_model function
+# If you want to use a custom config, change this one as you like
 CUSTOM_TRAIN_CONFIG = {
     "model_name": "LeNet",
     # Options: LeNet, ResNet18
     "model_description": "",
     "train_data": "RAF-DB",
+    # Options: AffectNet, RAF-DB
     "preprocessing": "",  # everything done on the 64x64 tensors
     # Options: StandardizeGray(), StandardizeRGB()
-    "black_and_white": False,  # switches between 1 and 3 channels
-    "validation_split": 0.2,
-    "learning_rate": 0.001,
-    "sampler": "uniform",  # Options: uniform, None
     "epochs": 10,
     "batch_size": 32,
-    "loss_function": "CrossEntropyLoss",
-    "optimizer": "Adam",
-    "device": "cpu", # Options: cpu, cuda:0, cuda:1, ...
 }
 
 
 @app.command()
 def train(offline: bool = False):
-    config = CUSTOM_TRAIN_CONFIG
-    if (config["device"] == "cuda") and (not torch.cuda.is_available()):
-        config["device"] = "cpu"
-        print("CUDA not available. Using CPU instead.")
+    # merge default and custom config
+    config = DEFAULT_TRAIN_CONFIG | CUSTOM_TRAIN_CONFIG
+    # check if valiadation path is valid
+    if not os.path.exists(os.getenv("DATASET_VALIDATION_PATH")):
+        raise FileNotFoundError(f"Directory {os.getenv('DATASET_VALIDATION_PATH')} not found. "
+                                f"Could not load validation dataset.")
 
     # disable wandb if offline
     os.environ['WANDB_MODE'] = 'offline' if offline else 'online'
     wandb.init(project="cvdl", config=config)
-    model = train_model(config)
-    print(model)
+    _ = train_model(config)
+    # test model on validation data
+    analyze_run_and_upload(config["model_name"])
 
 
 @app.command()
@@ -79,7 +75,7 @@ def inference(model_name: str, data_path: str, output_path: str):
 
 
 @app.command()
-def analyze(model_name: str, data_path: str):
+def analyze(model_name: str, data_path: str = os.getenv("DATASET_VALIDATION_PATH")):
     model_id, results = apply_model(model_name, data_path)
     top_n = accuracies(results, best=3)
     conf_matrix = confusion_matrix(results)
@@ -88,13 +84,13 @@ def analyze(model_name: str, data_path: str):
 
 
 @app.command()
-def video(model_name: str, output_path: str, webcam: bool = False, input: str = "", show_processing: bool = True):
-    if not webcam and not input:
+def video(model_name: str, output_path: str, webcam: bool = False, input_: str = "", show_processing: bool = True):
+    if not webcam and not input_:
         raise typer.BadParameter("Please specify a video input when not using the camera.")
 
     timestamp = datetime.now().strftime("%Y%m%dT%H%M%S")
     output_file = os.path.join(output_path, f"{model_name}-{timestamp}.avi")
-    make_video_prediction(model_name, webcam, input, output_file, show_processing)
+    make_video_prediction(model_name, webcam, input_, output_file, show_processing)
 
 
 if __name__ == "__main__":

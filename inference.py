@@ -14,7 +14,16 @@ from model import get_model
 
 
 def apply_model(model_name: str, data_path: str):
-    """Uses the model to infer on all images in the data_path and writes the results to output_path."""
+    """Uses the model to infer on all images in the data_path.
+    Args:
+        model_name: Most recent with model_name or WandB id of the model.
+        data_path: Path to the folder containing the images.
+                    Each image path should contain the label.
+    Returns:
+        model_id: The id of the model.
+        results_df: A dataframe containing the results.
+    """
+
     model_id, model, preprocessing = load_model_and_preprocessing(model_name)
     model.eval()
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
