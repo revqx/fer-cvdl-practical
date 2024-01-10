@@ -40,3 +40,7 @@ optional arguments:
 - `<webcam>` if using webcam
 - `<input>` set a video file as input
 - `<show-processing>` show the processing of the video
+
+
+Clipping faces from AffectNet
+```python main.py clipped <output-dir>```
