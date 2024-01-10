@@ -43,4 +43,7 @@ optional arguments:
 
 
 Clipping faces from AffectNet
-```python main.py clipped <output-dir>```
+
+```bash
+python main.py clipped <output-dir>
+```
