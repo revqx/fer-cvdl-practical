@@ -1,12 +1,16 @@
+import glob
 import os
 
+import numpy as np
+from matplotlib import pyplot as plt
 from torch.utils.data import Dataset
 import pandas as pd
 import torch
 from PIL import Image
 from torchvision.transforms import v2
-
-from utils import LABEL_TO_NUM
+from tqdm import tqdm
+from skimage.metrics import structural_similarity as ssim
+from utils import LABEL_TO_NUM, LABEL_TO_STR, load_images, label_from_path
 
 """
 It is important to note that the dataset class is responsible 
@@ -50,19 +54,18 @@ class AffectNet(Dataset):
         self.annotations = self.annotations[~self.annotations['label'].isin(['neutral', 'contempt'])]
         # reset index
         self.annotations = self.annotations.reset_index(drop=True)
-        # Encode the 'label' column using the label_encode dictionary
-        self.annotations['label'] = self.annotations['label'].apply(lambda x: LABEL_TO_NUM[x])
         self.preprocessing = preprocessing
         self.transform = v2.Compose(
             [v2.Resize((64, 64)),
              v2.ToImage(),
              v2.ToDtype(torch.float32, scale=True),
-             v2.Lambda(lambda x: x * 2 - 1)])
+             v2.Normalize(mean=[0.5], std=[0.5])])
 
     def __getitem__(self, item):
         img_path = os.path.join(self.root_dir, str(self.annotations.loc[item, 'pth']))
-        img = Image.open(img_path)
-        tensor = self.transform(img)
+        # close the image after reading it
+        with Image.open(img_path) as img:
+            tensor = self.transform(img)
         label = torch.tensor(int(self.annotations.loc[item, 'label']))
         if self.preprocessing:
             tensor = self.preprocessing(tensor)
@@ -98,46 +101,30 @@ class RAF_DB(Dataset):
             The training data of the RAFDB dataset since the validation data is already used for testing.
         """
 
-        csv_path = os.path.join(os.getenv('DATASET_RAF_DB_PATH'), 'train_labels.csv')
+
         root_dir = os.getenv('DATASET_RAF_DB_PATH')
         self.root_dir = root_dir
 
-        if not os.path.exists(csv_path):
-            raise FileNotFoundError(f"File {csv_path} not found. Could not load RAF-DB dataset.")
         if not os.path.exists(root_dir):
             raise FileNotFoundError(f"Directory {root_dir} not found. Could not load RAF-DB dataset.")
 
-        self.annotations = pd.read_csv(csv_path)
-        self.annotations['pth'] = self.annotations.apply(lambda x: f"DATASET/train/{x['label']}/{x['image']}", axis=1)
+        images = load_images(root_dir)
+        train_labels = [label_from_path(path) for path, _ in images]
 
-        rafdb_reorder_num_labels = {
-            1: LABEL_TO_NUM['surprise'],
-            2: LABEL_TO_NUM['fear'],
-            3: LABEL_TO_NUM['disgust'],
-            4: LABEL_TO_NUM['happiness'],
-            5: LABEL_TO_NUM['sadness'],
-            6: LABEL_TO_NUM['anger']
-        }
-
-        # remove 'neutral' images from dataset
-        self.annotations = self.annotations[self.annotations['label'] != 7]
-        # Encode the 'label' column using the label_encode dictionary
-        self.annotations['label'] = self.annotations['label'].apply(lambda x: rafdb_reorder_num_labels[x])
-        # reset index
-        self.annotations = self.annotations.reset_index(drop=True)
+        self.annotations = pd.DataFrame({'pth': [path for path, _ in images], 'label': train_labels})
 
         self.root_dir = root_dir
         self.transform = v2.Compose(
             [v2.Resize((64, 64)),
              v2.ToImage(),
              v2.ToDtype(torch.float32, scale=True),
-             v2.Lambda(lambda x: x * 2 - 1)])
+             v2.Normalize(mean=[0.5], std=[0.5])])
 
     def __len__(self):
         return len(self.annotations)
 
     def __getitem__(self, index):
-        img_path = os.path.join(self.root_dir, str(self.annotations.loc[index, 'pth']))
+        img_path = self.annotations.loc[index, 'pth']
         y_label = torch.tensor(int(self.annotations.loc[index, 'label']))
 
         with Image.open(img_path) as img:
@@ -145,3 +132,50 @@ class RAF_DB(Dataset):
                 img = self.transform(img)
 
         return img, y_label
+
+
+def compare_images(img1, img2, win_size=5):
+    """Compare two images using SSIM."""
+    img1 = img1.numpy().transpose(1, 2, 0)
+    img2 = img2.numpy().transpose(1, 2, 0)
+    score, _ = ssim(img1, img2, multichannel=True, full=True, win_size=win_size, channel_axis=2, data_range=2.0)
+    return score
+
+
+if __name__ == '__main__':
+    dataset = get_dataset("RAF-DB")
+    test_path = "/Users/marius/github/fer-cvdl-practical/data/test"
+    test_images = load_images(test_path)
+
+    # start_id = number of images in the data/train folder
+    train_path = "/Users/marius/github/fer-cvdl-practical/data/train"
+    start_id = len([file for file in os.listdir(train_path) if file.endswith(".jpg")]) + 1
+    print(f"Starting id: {start_id}")
+
+    for i in tqdm(range(len(dataset))):
+        same = False
+        for j in range(len(test_images)):
+            similarity = compare_images(dataset[i][0], test_images[j][1])
+            if similarity > 0.9:  # You can adjust this threshold
+                print(f"High similarity found between images: dataset index {i} and test image index {j}")
+                # plot the images
+                fig, ax = plt.subplots(1, 2)
+                ax[0].imshow(dataset[i][0].numpy().transpose(1, 2, 0))
+                ax[1].imshow(test_images[j][1].numpy().transpose(1, 2, 0))
+                plt.show()
+                same = True
+                break
+        if not same:
+            img = dataset[i][0].numpy().transpose(1, 2, 0)
+            img = (img + 1) / 2  # Rescale to [0, 1]
+            img = (img * 255).astype(np.uint8)  # Convert to uint8
+            img = Image.fromarray(img)  # Convert to PIL Image
+
+            # get the label using the LABEL_TO_STR dictionary
+            label = LABEL_TO_STR[dataset[i][1].item()]
+            # get the id using the start_id and the index
+            id = start_id + i
+            # save the image
+            img.save(f"{train_path}/img{id}_{label}.jpg")
+
+

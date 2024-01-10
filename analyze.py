@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-from utils import LABEL_TO_NUM, LABEL_TO_STR
+from utils import LABEL_TO_NUM, LABEL_TO_STR, label_from_path
 
 
 def accuracies(inference_results: pd.DataFrame, best=3) -> dict:
@@ -30,12 +30,3 @@ def confusion_matrix(inference_result: pd.DataFrame) -> pd.DataFrame:
         predictions = np.array(values).argsort()[::-1]
         matrix[label, predictions[0]] += 1
     return pd.DataFrame(matrix, index=LABEL_TO_STR.values(), columns=LABEL_TO_STR.values())
-
-
-def label_from_path(path) -> int | None:
-    """Try to guess the label from a given path.
-       Returns None if no label is found."""
-    for label, num in LABEL_TO_NUM.items():
-        if label in path:
-            return num
-    return None

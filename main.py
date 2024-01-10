@@ -86,6 +86,7 @@ def analyze(model_name: str, data_path: str):
     print(conf_matrix)
     print(top_n)
 
+
 @app.command()
 def video(model_name: str, output_path: str, webcam: bool = False, input: str = "", show_processing: bool = True):
     if not webcam and not input:
@@ -94,6 +95,7 @@ def video(model_name: str, output_path: str, webcam: bool = False, input: str = 
     timestamp = datetime.now().strftime("%Y%m%dT%H%M%S")
     output_file = os.path.join(output_path, f"{model_name}-{timestamp}.avi")
     make_video_prediction(model_name, webcam, input, output_file, show_processing)
+
 
 if __name__ == "__main__":
     app()

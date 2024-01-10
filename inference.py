@@ -9,7 +9,7 @@ import torch
 from torchvision.transforms import v2
 from tqdm import tqdm
 
-from utils import LABEL_TO_STR
+from utils import LABEL_TO_STR, load_images
 from model import get_model
 
 
@@ -32,21 +32,6 @@ def apply_model(model_name: str, data_path: str):
         results_df.loc[len(results_df)] = [file_name] + output
 
     return model_id, results_df
-
-
-def load_images(path: str) -> [torch.Tensor]:
-    """Return list with (image_path, image_as_tensor) tuples."""
-    image_files = glob.glob(os.path.join(path, "*.jpg"))
-    images = []
-    for image_file in image_files:
-        images.append(Image.open(image_file))
-    transform = v2.Compose(
-        [v2.Resize((64, 64)),
-         v2.ToImage(),
-         v2.ToDtype(torch.float32, scale=True),
-         v2.Lambda(lambda x: x * 2 - 1)])
-
-    return [(image_path, transform(image)) for image_path, image in zip(image_files, images)]
 
 
 def load_model_and_preprocessing(model_name: str) -> (str, torch.nn.Module, torchvision.transforms.v2.Compose):
