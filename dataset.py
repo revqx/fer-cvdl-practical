@@ -54,6 +54,9 @@ class AffectNet(Dataset):
         self.annotations = self.annotations[~self.annotations['label'].isin(['neutral', 'contempt'])]
         # reset index
         self.annotations = self.annotations.reset_index(drop=True)
+        # Encode the 'label' column using the label_encode dictionary
+        self.annotations['label'] = self.annotations['label'].apply(lambda x: LABEL_TO_NUM[x])
+
         self.preprocessing = preprocessing
         self.transform = v2.Compose(
             [v2.Resize((64, 64)),
