@@ -5,12 +5,15 @@ import numpy as np
 import torch
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader, WeightedRandomSampler
+from torch.optim.lr_scheduler import ReduceLROnPlateau
+
 import wandb
 from tqdm import tqdm
 
 from dataset import get_dataset
 from model import get_model
 from preprocessing import select_preprocessing
+
 
 
 def train_model(config: dict):
@@ -31,12 +34,16 @@ def train_model(config: dict):
     model = get_model(config["model_name"])
     model.to(device)
 
+    # TODO: Add loss function and optimizer selection
     # Define loss function and optimizer
     criterion = torch.nn.CrossEntropyLoss()
+
+    # Adam with beta1=0.9 and beta2=0.999
     optimizer = torch.optim.Adam(model.parameters(), lr=config["learning_rate"])
+    scheduler = ReduceLROnPlateau(optimizer, 'max', patience=3, verbose=True, factor=0.5)
 
     # Train and evaluate the model
-    training_loop(model, train_loader, val_loader, criterion, optimizer, config)
+    training_loop(model, train_loader, val_loader, criterion, optimizer, scheduler, config)
 
     # Save model and transforms
     timestamp = datetime.now().strftime("%Y%m%dT%H%M%S")
@@ -47,10 +54,11 @@ def train_model(config: dict):
     return model
 
 
-def training_loop(model, train_loader, val_loader, criterion, optimizer, config):
-    # Training loop
+def training_loop(model, train_loader, val_loader, criterion, optimizer, scheduler, config):
     for epoch in range(config["epochs"]):
-        # Training and validation phases
+        # Dictionaries to store metrics for each phase
+        metrics = {'train_loss': 0.0, 'train_acc': 0.0, 'val_loss': 0.0, 'val_acc': 0.0}
+
         for phase in ["train", "val"]:
             if phase == "train":
                 model.train()
@@ -62,43 +70,42 @@ def training_loop(model, train_loader, val_loader, criterion, optimizer, config)
             running_loss = 0.0
             running_corrects = 0
 
-            # Use tqdm for progress bar
             progress_bar = tqdm(data_loader, desc=f"Epoch {epoch + 1}/{config['epochs']} {phase}")
 
-            # Iterate over data
             for inputs, labels in progress_bar:
                 inputs = inputs.to(config["device"])
                 labels = labels.to(config["device"])
 
-                # Zero the parameter gradients
                 optimizer.zero_grad()
 
-                # Forward pass
                 with torch.set_grad_enabled(phase == "train"):
                     outputs = model(inputs)
                     _, preds = torch.max(outputs, 1)
                     loss = criterion(outputs, labels)
 
-                    # Backward pass
                     if phase == "train":
                         loss.backward()
                         optimizer.step()
 
-                # Statistics
                 running_loss += loss.item() * inputs.size(0)
                 running_corrects += torch.sum(preds == labels.data)
 
-                # Update progress bar
                 progress_bar.set_postfix({'loss': f"{loss.item():.2f}"})
 
+            # Calculate and store metrics
             epoch_loss = running_loss / len(data_loader.dataset)
             epoch_acc = running_corrects.double() / len(data_loader.dataset)
+            metrics[f'{phase}_loss'] = epoch_loss
+            metrics[f'{phase}_acc'] = epoch_acc
 
             print(f"{phase} loss: {epoch_loss}, acc: {epoch_acc}")
 
-            # Log metrics to wandb
-            wandb.log({f"{phase}_loss": epoch_loss, 'epoch': epoch})
-            wandb.log({f"{phase}_acc": epoch_acc, 'epoch': epoch})
+        scheduler.step(metrics['val_loss'])
+
+        # Log all metrics for the epoch at once
+        metrics['epoch'] = epoch
+        wandb.log(metrics)
+
 
 
 def train_val_dataloaders(dataset, config):
