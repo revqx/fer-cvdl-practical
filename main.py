@@ -26,6 +26,7 @@ DEFAULT_TRAIN_CONFIG = {
     "validation_split": 0.2,
     "learning_rate": 0.001,
     "sampler": "uniform",  # Options: uniform, None
+    "patience": 3,
     "epochs": 7,
     "batch_size": 64,
     "loss_function": "CrossEntropyLoss",
