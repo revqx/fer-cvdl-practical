@@ -55,7 +55,44 @@ class ResNet18(nn.Module):
     def forward(self, x):
         x = self.model(x)
         return x
+        
+class EmotionModel_2(nn.Module):
+    def __init__(self, num_classes=6):
+        super(EmotionModel_2, self).__init__()
+
+        self.conv_block1 = self._create_conv_block(3, 64)
+        self.conv_block2 = self._create_conv_block(64, 128)
+        self.conv_block3 = self._create_conv_block(128, 256)
+        self.conv_block4 = self._create_conv_block(256, 512)
+
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.flatten = nn.Flatten()
+        self.fc = nn.Linear(512, num_classes)
+
+    def _create_conv_block(self, in_channels, out_channels):
+        block = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2) 
+        )
+        return block
+
+    def forward(self, x):
+        x = self.conv_block1(x)
+        x = self.conv_block2(x)
+        x = self.conv_block3(x)
+        x = self.conv_block4(x)
+        x = self.avgpool(x)
+        x = self.flatten(x)
+        x = self.fc(x)
+
+        return x
     
+
 class EmotionModel_2(nn.Module):
     def __init__(self, num_classes=6):
         super(EmotionModel_2, self).__init__()

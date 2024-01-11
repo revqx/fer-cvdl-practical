@@ -52,7 +52,8 @@ CUSTOM_TRAIN_CONFIG = {
 }
 
 # In case you want to create an ensemble model, add the model names/id here
-Ensemble_models = ["erd4rb6p", "nyqmn8ti", "g7nkm68h"] 
+Ensemble_models = ["erd4rb6p", "nyqmn8ti", "g7nkm68h", "dn749f5h"] 
+
 
 
 @app.command()
@@ -103,6 +104,24 @@ def video(model_name: str, output_path: str, webcam: bool = False, input_: str =
 
 
 @app.command()
+def clipped(output_dir: str = "data/clipped_affect_net"):
+    input_path = os.getenv('DATASET_AFFECT_NET_PATH')
+    if not os.path.exists(input_path):
+        raise typer.BadParameter("Dataset not found. Please set the DATASET_AFFECT_NET_PATH environment variable.")
+
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir, exist_ok=True)
+
+    labels_path = os.path.join(input_path, "labels.csv")
+    labels_output_path = os.path.join(output_dir, "labels.csv")
+    os.system(f"cp {labels_path} {labels_output_path}")
+    print(f"Copied labels to {labels_output_path}.")
+
+    clip_affect_net_faces(input_path, output_dir)
+    print (f"Clipped images saved to {output_dir}.")
+
+
+@app.command()
 def ensemble(data_path=os.getenv("DATASET_VALIDATION_PATH")):
     model_ids = Ensemble_models
     ensemble_results_df = ensemble_results(model_ids, data_path)
@@ -110,8 +129,6 @@ def ensemble(data_path=os.getenv("DATASET_VALIDATION_PATH")):
     top_n = accuracies(ensemble_results_df, best=3)
     conf_matrix = confusion_matrix(ensemble_results_df)
     print(conf_matrix)
-    print(top_n)
-
 
 
 if __name__ == "__main__":

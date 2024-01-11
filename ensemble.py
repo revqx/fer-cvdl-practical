@@ -22,6 +22,7 @@ def get_model_results(model_ids, data_path=os.getenv("DATASET_VALIDATION_PATH"))
 
     return results, paths, columns
 
+
 def ensemble_results(model_ids, data_path=os.getenv("DATASET_VALIDATION_PATH")):
     results, paths, columns = get_model_results(model_ids, data_path)
 
