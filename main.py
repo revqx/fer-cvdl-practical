@@ -56,7 +56,7 @@ CUSTOM_TRAIN_CONFIG = {
 }
 
 # In case you want to create an ensemble model, add the model names/id here
-Ensemble_models = ["erd4rb6p", "nyqmn8ti", "g7nkm68h", "dn749f5h"] 
+ENSEMBLE_MODELS = ["erd4rb6p", "nyqmn8ti", "g7nkm68h", "dn749f5h"] 
 
 
 
