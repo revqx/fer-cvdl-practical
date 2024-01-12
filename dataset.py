@@ -68,7 +68,7 @@ class AffectNet(Dataset):
         # close the image after reading it
         with Image.open(img_path) as img:
             tensor = self.transform(img)
-        label = torch.tensor(LABEL_TO_NUM[self.annotations.loc[item, 'label']])
+        label = torch.tensor(int(self.annotations.loc[item, 'label']))
         if self.preprocessing:
             tensor = self.preprocessing(tensor)
         return tensor, label

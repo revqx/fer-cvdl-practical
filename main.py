@@ -12,7 +12,10 @@ from analyze import accuracies, confusion_matrix, analyze_run_and_upload
 from train import train_model
 from inference import apply_model
 from video_prediction import make_video_prediction
+
+from clip_affect_net import clip_affect_net_faces
 from ensemble import get_model_results, ensemble_results
+
 
 load_dotenv()
 app = typer.Typer()
@@ -29,6 +32,7 @@ DEFAULT_TRAIN_CONFIG = {
     "validation_split": 0.2,
     "learning_rate": 0.001,
     "sampler": "uniform",  # Options: uniform, None
+    "patience": 3,
     "epochs": 7,
     "batch_size": 64,
     "loss_function": "CrossEntropyLoss",
@@ -129,7 +133,7 @@ def ensemble(data_path=os.getenv("DATASET_VALIDATION_PATH")):
     top_n = accuracies(ensemble_results_df, best=3)
     conf_matrix = confusion_matrix(ensemble_results_df)
     print(conf_matrix)
-
+    
 
 if __name__ == "__main__":
     app()
