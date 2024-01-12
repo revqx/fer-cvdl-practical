@@ -133,6 +133,7 @@ def ensemble(data_path=os.getenv("DATASET_VALIDATION_PATH")):
     top_n = accuracies(ensemble_results_df, best=3)
     conf_matrix = confusion_matrix(ensemble_results_df)
     print(conf_matrix)
+    print(top_n)
     
 
 if __name__ == "__main__":
