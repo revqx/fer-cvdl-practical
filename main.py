@@ -4,12 +4,18 @@ import typer
 from dotenv import load_dotenv
 import os
 import wandb
+import pandas as pd
+from scipy import stats
+import numpy as np
 
 from analyze import accuracies, confusion_matrix, analyze_run_and_upload
 from train import train_model
 from inference import apply_model
 from video_prediction import make_video_prediction
+
 from clip_affect_net import clip_affect_net_faces
+from ensemble import get_model_results, ensemble_results
+
 
 load_dotenv()
 app = typer.Typer()
@@ -36,7 +42,7 @@ DEFAULT_TRAIN_CONFIG = {
 
 # If you want to use a custom config, change this one as you like
 CUSTOM_TRAIN_CONFIG = {
-    "model_name": "LeNet",
+    "model_name": "EmotionModel_2",
     # Options: LeNet, ResNet18
     "model_description": "",
     "train_data": "RAF-DB",
@@ -45,7 +51,13 @@ CUSTOM_TRAIN_CONFIG = {
     # Options: StandardizeGray(), StandardizeRGB()
     "epochs": 10,
     "batch_size": 32,
+    "device": "cuda:0",
+    "patience": 3,
 }
+
+# In case you want to create an ensemble model, add the model names/id here
+Ensemble_models = ["erd4rb6p", "nyqmn8ti", "g7nkm68h", "dn749f5h"] 
+
 
 
 @app.command()
@@ -112,6 +124,16 @@ def clipped(output_dir: str = "data/clipped_affect_net"):
     clip_affect_net_faces(input_path, output_dir)
     print (f"Clipped images saved to {output_dir}.")
 
+
+@app.command()
+def ensemble(data_path=os.getenv("DATASET_VALIDATION_PATH")):
+    model_ids = Ensemble_models
+    ensemble_results_df = ensemble_results(model_ids, data_path)
+
+    top_n = accuracies(ensemble_results_df, best=3)
+    conf_matrix = confusion_matrix(ensemble_results_df)
+    print(conf_matrix)
+    
 
 if __name__ == "__main__":
     app()
