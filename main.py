@@ -1,21 +1,16 @@
+import os
 from datetime import datetime
 
 import typer
-from dotenv import load_dotenv
-import os
 import wandb
-import pandas as pd
-from scipy import stats
-import numpy as np
+from dotenv import load_dotenv
 
 from analyze import accuracies, confusion_matrix, analyze_run_and_upload
-from train import train_model
-from inference import apply_model
-from video_prediction import make_video_prediction
-
 from clip_affect_net import clip_affect_net_faces
-from ensemble import get_model_results, ensemble_results
-
+from ensemble import ensemble_results
+from inference import apply_model
+from train import train_model
+from video_prediction import make_video_prediction
 
 load_dotenv()
 app = typer.Typer()
@@ -51,13 +46,12 @@ CUSTOM_TRAIN_CONFIG = {
     # Options: StandardizeGray(), StandardizeRGB()
     "epochs": 10,
     "batch_size": 32,
-    "device": "cuda:0",
+    "device": "cpu",
     "patience": 3,
 }
 
 # In case you want to create an ensemble model, add the model names/id here
-ENSEMBLE_MODELS = ["erd4rb6p", "nyqmn8ti", "g7nkm68h", "dn749f5h"] 
-
+ENSEMBLE_MODELS = ["erd4rb6p", "nyqmn8ti", "g7nkm68h", "dn749f5h"]
 
 
 @app.command()
@@ -122,19 +116,19 @@ def clipped(output_dir: str = "data/clipped_affect_net"):
     print(f"Copied labels to {labels_output_path}.")
 
     clip_affect_net_faces(input_path, output_dir)
-    print (f"Clipped images saved to {output_dir}.")
+    print(f"Clipped images saved to {output_dir}.")
 
 
 @app.command()
 def ensemble(data_path=os.getenv("DATASET_VALIDATION_PATH")):
-    model_ids = Ensemble_models
+    model_ids = ENSEMBLE_MODELS
     ensemble_results_df = ensemble_results(model_ids, data_path)
 
     top_n = accuracies(ensemble_results_df, best=3)
     conf_matrix = confusion_matrix(ensemble_results_df)
     print(conf_matrix)
     print(top_n)
-    
+
 
 if __name__ == "__main__":
     app()

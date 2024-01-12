@@ -1,9 +1,8 @@
 import os
+
 import pandas as pd
 
 from inference import apply_model
-from utils import LABEL_TO_STR, load_images, label_from_path
-from analyze import accuracies, confusion_matrix
 
 
 def get_model_results(model_ids, data_path=os.getenv("DATASET_VALIDATION_PATH")):

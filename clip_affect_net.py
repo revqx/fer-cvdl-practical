@@ -1,5 +1,7 @@
-import cv2
 import os
+
+import cv2
+
 
 def clip_face(img):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)

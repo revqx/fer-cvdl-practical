@@ -1,11 +1,13 @@
+import os
+
 import cv2
 import torch
-import os
 
 from inference import load_model_and_preprocessing
 from utils import LABEL_TO_STR
 
 FACE_CASCADE_PATH = "cascades/haarcascade_frontalface_default.xml"
+
 
 def initialize_model(model_name: str):
     """Initialize the model with the given name"""
@@ -15,6 +17,7 @@ def initialize_model(model_name: str):
     model.to(device)
 
     return model, preprocessing, device
+
 
 def initialize_cap(webcam: bool, video_input: str):
     """Initialize the camera or video input"""
@@ -31,6 +34,7 @@ def initialize_cap(webcam: bool, video_input: str):
 
     return cap
 
+
 def initialize_out(cap, file, codec='XVID'):
     """Initialize the video output"""
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH) + 0.5)
@@ -39,6 +43,7 @@ def initialize_out(cap, file, codec='XVID'):
 
     fourcc = cv2.VideoWriter_fourcc(*codec)
     return cv2.VideoWriter(file, fourcc, fps, (width, height))
+
 
 def predict_emotion(image, model, preprocessing, device):
     """Predict the emotion of the given image"""
@@ -53,6 +58,7 @@ def predict_emotion(image, model, preprocessing, device):
         predicted = torch.argmax(output[0]).item()
 
     return LABEL_TO_STR[predicted]
+
 
 def process_frame(frame, face_cascade, model, device, preprocessing):
     """Process the frame and return the frame with the predicted emotions"""
@@ -69,6 +75,7 @@ def process_frame(frame, face_cascade, model, device, preprocessing):
 
     return frame
 
+
 def main_loop(cap, face_cascade, model, device, preprocessing, show_processing):
     """Main loop for video prediction"""
     print("Starting video prediction...")
@@ -84,7 +91,8 @@ def main_loop(cap, face_cascade, model, device, preprocessing, show_processing):
             cv2.imshow('Facial Emotion Recognition', processed_frame)
 
         q_pressed = cv2.waitKey(1) == ord('q')
-        window_closed = show_processing and cv2.getWindowProperty('Facial Emotion Recognition', cv2.WND_PROP_VISIBLE) < 1
+        window_closed = show_processing and cv2.getWindowProperty('Facial Emotion Recognition',
+                                                                  cv2.WND_PROP_VISIBLE) < 1
         if q_pressed or window_closed:
             print("Video prediction interrupted.")
             break
@@ -93,7 +101,8 @@ def main_loop(cap, face_cascade, model, device, preprocessing, show_processing):
 def make_video_prediction(model_name: str, webcam: bool, video_input: str, output_file: str, show_processing: bool):
     """Make video prediction using the model with the given name"""
     if not os.path.isfile(FACE_CASCADE_PATH):
-        raise IOError("Please download the haar cascade file from https://github.com/opencv/opencv/blob/master/data/haarcascades/haarcascade_frontalface_default.xml and put it into /cascades")
+        raise IOError(
+            "Please download the haar cascade file from https://github.com/opencv/opencv/blob/master/data/haarcascades/haarcascade_frontalface_default.xml and put it into /cascades")
 
     face_cascade = cv2.CascadeClassifier(FACE_CASCADE_PATH)
 

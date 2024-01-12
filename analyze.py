@@ -1,11 +1,11 @@
 import os
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 import wandb
 
 from inference import apply_model
-from utils import LABEL_TO_NUM, LABEL_TO_STR, label_from_path
+from utils import LABEL_TO_STR, label_from_path
 
 
 def accuracies(inference_results: pd.DataFrame, best=3) -> dict:

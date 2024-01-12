@@ -1,16 +1,13 @@
 import glob
 import os
-from datetime import datetime
 
-import torchvision.transforms.v2
-from PIL import Image
 import pandas as pd
 import torch
-from torchvision.transforms import v2
+import torchvision.transforms.v2
 from tqdm import tqdm
 
-from utils import LABEL_TO_STR, load_images
 from model import get_model
+from utils import LABEL_TO_STR, load_images
 
 
 def apply_model(model_name: str, data_path: str):

@@ -1,14 +1,15 @@
 import os
 
 import numpy as np
-from matplotlib import pyplot as plt
-from torch.utils.data import Dataset
 import pandas as pd
 import torch
 from PIL import Image
+from matplotlib import pyplot as plt
+from skimage.metrics import structural_similarity as ssim
+from torch.utils.data import Dataset
 from torchvision.transforms import v2
 from tqdm import tqdm
-from skimage.metrics import structural_similarity as ssim
+
 from utils import LABEL_TO_STR, LABEL_TO_NUM, load_images, label_from_path
 
 """
@@ -185,5 +186,3 @@ if __name__ == '__main__':
             id = start_id + i
             # save the image
             img.save(f"{train_path}/img{id}_{label}.jpg")
-
-

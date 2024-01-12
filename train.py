@@ -3,11 +3,10 @@ from datetime import datetime
 
 import numpy as np
 import torch
-from sklearn.model_selection import train_test_split
-from torch.utils.data import DataLoader, WeightedRandomSampler
-from torch.optim.lr_scheduler import ReduceLROnPlateau
-
 import wandb
+from sklearn.model_selection import train_test_split
+from torch.optim.lr_scheduler import ReduceLROnPlateau
+from torch.utils.data import DataLoader, WeightedRandomSampler
 from tqdm import tqdm
 
 from dataset import get_dataset
