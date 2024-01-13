@@ -102,7 +102,7 @@ def video(model_name: str, output_path: str, webcam: bool = False, input_: str =
 
 
 @app.command()
-def clipped(output_dir: str = "data/clipped_affect_net"):
+def clipped(output_dir: str = "data/clipped_affect_net", use_rafdb_format: bool = False):
     input_path = os.getenv('DATASET_AFFECT_NET_PATH')
     if not os.path.exists(input_path):
         raise typer.BadParameter("Dataset not found. Please set the DATASET_AFFECT_NET_PATH environment variable.")
@@ -110,12 +110,13 @@ def clipped(output_dir: str = "data/clipped_affect_net"):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir, exist_ok=True)
 
-    labels_path = os.path.join(input_path, "labels.csv")
-    labels_output_path = os.path.join(output_dir, "labels.csv")
-    os.system(f"cp {labels_path} {labels_output_path}")
-    print(f"Copied labels to {labels_output_path}.")
+    if not use_rafdb_format:
+        labels_path = os.path.join(input_path, "labels.csv")
+        labels_output_path = os.path.join(output_dir, "labels.csv")
+        os.system(f"cp {labels_path} {labels_output_path}")
+        print(f"Copied labels to {labels_output_path}.")
 
-    clip_affect_net_faces(input_path, output_dir)
+    clip_affect_net_faces(input_path, output_dir, use_rafdb_format)
     print(f"Clipped images saved to {output_dir}.")
 
 

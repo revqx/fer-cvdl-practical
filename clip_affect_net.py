@@ -17,7 +17,7 @@ def clip_face(img):
     return cv2.resize(img, (64, 64)), was_clipped
 
 
-def clip_affect_net_faces(input_path, output_dir):
+def clip_affect_net_faces(input_path, output_dir, use_rafdb_format):
     clipped_files = 0
     total_files = 0
     for root, dirs, files in os.walk(input_path):
@@ -31,13 +31,19 @@ def clip_affect_net_faces(input_path, output_dir):
                     clipped_files += 1
                 total_files += 1
 
-                relative_path = os.path.relpath(root, input_path)
-                output_subdir = os.path.join(output_dir, relative_path)
+                if use_rafdb_format:
+                    emotion_label = os.path.basename(root)
+                    filename, ext = os.path.splitext(file)
+                    new_filename = f"{filename}_{emotion_label}{ext}"
+                    output_path = os.path.join(output_dir, new_filename)
+                else:
+                    relative_path = os.path.relpath(root, input_path)
+                    output_subdir = os.path.join(output_dir, relative_path)
 
-                if not os.path.exists(output_subdir):
-                    os.makedirs(output_subdir)
+                    if not os.path.exists(output_subdir):
+                        os.makedirs(output_subdir)
 
-                output_path = os.path.join(output_subdir, file)
+                    output_path = os.path.join(output_subdir, file)
 
                 cv2.imwrite(output_path, img)
 
