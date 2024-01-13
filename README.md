@@ -45,5 +45,8 @@ optional arguments:
 Clipping faces from AffectNet
 
 ```bash
-python main.py clipped <output-dir>
+python main.py clipped
 ```
+
+- `<output-dir>` directory to store the clipped faces, default is `./data/clipped_affect_net`
+- `<use-rafdb-format>` use the RAF-DB format for the output directory, default is `False`
