@@ -23,6 +23,10 @@ def apply_model(model_name: str, data_path: str):
 
     model_id, model, preprocessing = load_model_and_preprocessing(model_name)
     model.eval()
+    return use_model(model_id, model, data_path, preprocessing=preprocessing)
+
+
+def use_model(model_id, model: torch.nn.Module, data_path: str, preprocessing=None):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model.to(device)
 

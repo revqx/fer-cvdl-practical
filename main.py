@@ -7,10 +7,11 @@ import wandb
 from dotenv import load_dotenv
 from utils import LABEL_TO_STR, label_from_path
 
+from gradcam import grad_cam
 from analyze import accuracies, confusion_matrix, analyze_run_and_upload
 from clip_affect_net import clip_affect_net_faces
 from ensemble import ensemble_results
-from inference import apply_model
+from inference import apply_model, load_model_and_preprocessing
 from sweeps import get_sweep_config, train_sweep
 from train import train_model
 from video_prediction import make_video_prediction
@@ -99,8 +100,8 @@ def analyze(model_name: str, data_path: str = os.getenv("DATASET_VALIDATION_PATH
 def demo(model_name: str, record: bool = False, webcam: bool = False, input_file: str = "", show_processing: bool = True):
     if not webcam and not input_file:
         raise typer.BadParameter("Please specify a video input when not using the camera.")
-    
-    output_dir = os.getenv("VIDEO_OUTPUT_PATH") 
+
+    output_dir = os.getenv("VIDEO_OUTPUT_PATH")
     if not os.path.exists(output_dir) and record:
         os.makedirs(output_dir, exist_ok=True)
 
@@ -143,7 +144,7 @@ def ensemble(data_path=os.getenv("DATASET_VALIDATION_PATH")):
 def initialize_sweep(entity: str = "your_user_name", count: int = 40):
     project = "cvdl"
     entity = "your_user_name" # system ignores some user names -> input name here
-    
+
     if entity == "your_user_name":
         raise ValueError("Please enter your user name.")
 
@@ -156,7 +157,7 @@ def initialize_sweep(entity: str = "your_user_name", count: int = 40):
 @app.command()
 def getActivation(model_name: str, data_path: str = os.getenv("DATASET_VALIDATION_PATH"),
                      output_path: str = os.getenv("ACTIVATION_VALUES_PATH")):
-    
+
     model_id, results = apply_model(model_name, data_path)
     labels = []
     activation_values_dict = {}
@@ -178,6 +179,12 @@ def getActivation(model_name: str, data_path: str = os.getenv("DATASET_VALIDATIO
     # save values locally as a json file (folder path from env file)
     with open(f'{output_path}\\activation_values.json', 'w') as f:
         json.dump(activation_values_dict, f)
+
+
+@app.command()
+def explain(model_name: str, data_path: str = os.getenv("DATASET_VALIDATION_PATH"), examples: int = 5):
+    model_id, model, preprocessing = load_model_and_preprocessing(model_name)
+    grad_cam(model, data_path, examples=examples)
 
 
 if __name__ == "__main__":

@@ -1,5 +1,6 @@
 import glob
 import os
+import random as rnd
 
 import torch
 from PIL import Image
@@ -60,3 +61,16 @@ def label_from_path(path) -> int | None:
         if label in path:
             return num
     return None
+
+
+def get_images_and_labels(path: str, limit=None, random=False) -> ([torch.Tensor], [int]):
+    """Load all images and labels from the given path.
+       Returns a tuple of lists containing the images and labels."""
+    images = load_images(path)
+    labels = [label_from_path(path) for path, _ in images]
+    if limit and random:
+        images, labels = zip(*rnd.sample(list(zip(images, labels)), limit))
+    if limit:
+        images = images[:limit]
+        labels = labels[:limit]
+    return [tensor for _, tensor in images], labels
