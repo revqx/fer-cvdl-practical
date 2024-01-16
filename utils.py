@@ -63,12 +63,15 @@ def label_from_path(path) -> int | None:
     return None
 
 
-def get_images_and_labels(path: str, limit=None, random=False) -> ([torch.Tensor], [int]):
+def get_images_and_labels(path: str, limit=None, random=False, path_contains=None) -> ([torch.Tensor], [int]):
     """Load all images and labels from the given path.
        Returns a tuple of lists containing the images and labels."""
     images = load_images(path)
     labels = [label_from_path(path) for path, _ in images]
     paths = [path for path, _ in images]
+    if path_contains:
+        images, labels, paths = zip(*[(i, l, p) for i, l, p in zip(images, labels, paths) if path_contains in p])
+    limit = min(limit, len(images))
     if limit and random:
         images, labels, paths = zip(*rnd.sample(list(zip(images, labels, paths)), limit))
     if limit:

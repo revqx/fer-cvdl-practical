@@ -9,6 +9,16 @@ from utils import get_images_and_labels, LABEL_TO_STR
 from analyze import accuracies
 from inference import use_model
 
+"""
+Good pictures for Model 52q6cmxc:
+    - img 167: fear
+    - img 470: sadness
+    - img 017: mislabeled as sadness, actually surprise (the net has a point there)
+    - img 515: anger
+    - img 397: happiness
+    - img 126: fear (works even though there are hands in the face)
+"""
+
 
 class LeNetGrad(nn.Module):
     def __init__(self, trained_model):
@@ -44,16 +54,12 @@ class LeNetGrad(nn.Module):
         return x
 
 
-def grad_cam(model: nn.Module, data_path, examples=10, random=True):
-    print(model.__class__)
+def grad_cam(model: nn.Module, data_path, examples=10, random=True, path_contains=None):
     model_grad = LeNetGrad(model)
-    _, result = use_model('no_id_known', model_grad, data_path)
-    acc = accuracies(result)
-    print(acc)
-    tensors, labels, filenames = get_images_and_labels(data_path, limit=examples, random=random)
+    tensors, labels, filenames = get_images_and_labels(data_path, limit=examples, random=random, path_contains=path_contains)
 
     for t, l, p in zip(tensors, labels, filenames):
-        print(f"Label: {l}")
+        print(f"Explaining image {p}")
         explain_image(model_grad, t, l, p)
 
 
