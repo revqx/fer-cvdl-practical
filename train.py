@@ -113,22 +113,26 @@ def training_loop(model, train_loader, val_loader, criterion, optimizer, schedul
 
 
 def train_val_dataloaders(dataset, config):
-    train_data, val_data = train_test_split(dataset, test_size=config["validation_split"])
-
-    sampler = None
-    if config.get("sampler") not in [None, False, "", "uniform"]:
-        raise ValueError(f"Invalid sampler {config['sampler']}.")
-    if config.get("sampler") == "uniform":
-        # count labels and create sampler
-        y = [label for _, label in train_data]
-        class_counts = np.bincount(y)
+    if config["sampler"] == "uniform":
+        labels = [label for _, label in dataset]
+        class_counts = np.bincount(labels)
         class_weights = 1. / class_counts
-        weights = class_weights[y]
-        # Create the sampler
+        weights = class_weights[labels]
+
         sampler = WeightedRandomSampler(weights, len(weights))
 
-    # Create the dataloaders
-    train_loader = DataLoader(train_data, batch_size=config["batch_size"], sampler=sampler)
-    val_loader = DataLoader(val_data, batch_size=config["batch_size"], shuffle=False)
+        loader = DataLoader(dataset, batch_size=len(dataset), sampler=sampler)
+
+        # has to be turned back into a dataset to use train_test_split
+        uniform_dataset, uniform_labels = next(iter(loader))
+
+    else: # in case no input or other than uniform is given
+        uniform_dataset, uniform_labels = dataset, [label for _, label in dataset]
+
+    # redefine labels to base the stratification on so distribution is consistent
+    train_data, val_data, train_labels, val_labels = train_test_split(uniform_dataset, uniform_labels, test_size=config["validation_split"], stratify=uniform_labels)
+
+    train_loader = DataLoader(list(zip(train_data, train_labels)), batch_size=config["batch_size"])
+    val_loader = DataLoader(list(zip(val_data, val_labels)), batch_size=config["batch_size"], shuffle=False)
 
     return train_loader, val_loader
