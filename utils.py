@@ -68,9 +68,11 @@ def get_images_and_labels(path: str, limit=None, random=False) -> ([torch.Tensor
        Returns a tuple of lists containing the images and labels."""
     images = load_images(path)
     labels = [label_from_path(path) for path, _ in images]
+    paths = [path for path, _ in images]
     if limit and random:
-        images, labels = zip(*rnd.sample(list(zip(images, labels)), limit))
+        images, labels, paths = zip(*rnd.sample(list(zip(images, labels, paths)), limit))
     if limit:
         images = images[:limit]
         labels = labels[:limit]
-    return [tensor for _, tensor in images], labels
+        paths = paths[:limit]
+    return [tensor for _, tensor in images], labels, paths
