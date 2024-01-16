@@ -35,12 +35,16 @@ def train_model(config: dict):
     model = get_model(config["model_name"])
     model.to(device)
 
-    # TODO: Add loss function and optimizer selection
+    # TODO: Add loss function selection
     # Define loss function and optimizer
     criterion = torch.nn.CrossEntropyLoss()
 
     # Adam with beta1=0.9 and beta2=0.999
-    optimizer = torch.optim.Adam(model.parameters(), lr=config["learning_rate"])
+    if config["optimizer"] == "Adam":
+        optimizer = torch.optim.Adam(model.parameters(), lr=config["learning_rate"])
+    elif config["optimizer"] == "SGD":
+        optimizer = torch.optim.SGD(model.parameters(), lr=config["learning_rate"])
+        
     scheduler = ReduceLROnPlateau(optimizer, 'min', patience=config["patience"], verbose=True)
 
     # Train and evaluate the model

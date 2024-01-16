@@ -65,6 +65,10 @@ class AffectNet(Dataset):
              v2.Normalize(mean=[0.5], std=[0.5])])
 
     def __getitem__(self, item):
+        # needed for sweep to work (don't ask why)
+        if item >= len(self.annotations):
+            raise IndexError(f"Index {item} out of range")
+
         img_path = os.path.join(self.root_dir, str(self.annotations.loc[item, 'pth']))
         # close the image after reading it
         with Image.open(img_path) as img:
@@ -130,6 +134,10 @@ class RafDb(Dataset):
         return len(self.annotations)
 
     def __getitem__(self, index):
+        # needed for sweep to work (don't ask why)
+        if index >= len(self.annotations):
+            raise IndexError(f"Index {index} out of range")
+
         img_path = self.annotations.loc[index, 'pth']
         y_label = torch.tensor(int(self.annotations.loc[index, 'label']))
 
