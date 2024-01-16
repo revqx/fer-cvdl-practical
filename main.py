@@ -11,6 +11,7 @@ from ensemble import ensemble_results
 from inference import apply_model
 from train import train_model
 from video_prediction import make_video_prediction
+from sweeps import get_sweep_config, train_sweep
 
 load_dotenv()
 app = typer.Typer()
@@ -25,20 +26,20 @@ DEFAULT_TRAIN_CONFIG = {
     # Options: StandardizeGray(), StandardizeRGB()
     "black_and_white": False,  # switches between 1 and 3 channels
     "validation_split": 0.2,
-    "learning_rate": 0.001,
+    "learning_rate": 0.07,
     "sampler": "uniform",  # Options: uniform, None
-    "patience": 3,
+    "patience": 2,
     "epochs": 7,
     "batch_size": 64,
     "loss_function": "CrossEntropyLoss",
-    "optimizer": "Adam",
+    "optimizer": "SGD", # Options: Adam, SGD
     "device": "cpu",
 }
 
 # If you want to use a custom config, change this one as you like
 CUSTOM_TRAIN_CONFIG = {
-    "model_name": "EmotionModel_2",
-    # Options: LeNet, ResNet18
+    "model_name": "CustomEmotionModel_4",
+    # Options: LeNet, ResNet18, EmotionModel_2, CustomEmotionModel_3, CustomEmotionModel_4
     "model_description": "",
     "train_data": "RAF-DB",
     # Options: AffectNet, RAF-DB
@@ -47,11 +48,11 @@ CUSTOM_TRAIN_CONFIG = {
     "epochs": 10,
     "batch_size": 32,
     "device": "cpu",
-    "patience": 3,
+    "patience": 2,
 }
 
 # In case you want to create an ensemble model, add the model names/id here
-ENSEMBLE_MODELS = ["erd4rb6p", "nyqmn8ti", "g7nkm68h", "dn749f5h"]
+ENSEMBLE_MODELS = ["h8txabjg", "odyx0ott", "8uu89woq"]
 
 
 @app.command()
@@ -129,6 +130,20 @@ def ensemble(data_path=os.getenv("DATASET_VALIDATION_PATH")):
     conf_matrix = confusion_matrix(ensemble_results_df)
     print(conf_matrix)
     print(top_n)
+
+
+@app.command()
+def initialize_sweep(entity: str = "your_user_name", count: int = 30):
+    project = "cvdl"
+    entity = "e-schmitz"
+
+    if entity == "your_user_name":
+        raise ValueError("Please enter your user name.")
+    
+    sweep_config = get_sweep_config()
+
+    sweep_id = wandb.sweep(sweep_config, project = project, entity = entity)
+    wandb.agent(sweep_id, function = train_sweep, count = count) 
 
 
 if __name__ == "__main__":
