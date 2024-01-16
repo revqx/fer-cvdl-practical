@@ -44,7 +44,7 @@ def train_model(config: dict):
         optimizer = torch.optim.Adam(model.parameters(), lr=config["learning_rate"])
     elif config["optimizer"] == "SGD":
         optimizer = torch.optim.SGD(model.parameters(), lr=config["learning_rate"])
-        
+
     scheduler = ReduceLROnPlateau(optimizer, 'min', patience=config["patience"], verbose=True)
 
     # Train and evaluate the model
