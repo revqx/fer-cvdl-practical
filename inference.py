@@ -74,7 +74,8 @@ def load_model_and_preprocessing(model_name: str) -> (str, torch.nn.Module, torc
         # Load the most recent model
         selected_model_path = possible[latest_index]
 
-    loaded_model_dict = torch.load(selected_model_path)
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    loaded_model_dict = torch.load(selected_model_path, map_location=device)
 
     # Reconstruct the model
     model_type = os.path.basename(selected_model_path).split('-')[0]

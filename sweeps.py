@@ -1,61 +1,58 @@
+import numpy as np  # needed for custom train method
+import torch  # needed for device and custom train method
+import torch.nn.functional as F  # needed for custom train method
 import wandb
-import torch.optim as optim #optimizer
-import torch #needed for device and custom train method
-import torch.nn.functional as F #needed for custom train method
-from torch.utils.data import DataLoader, WeightedRandomSampler#needed for custom train method
-import numpy as np #needed for custom train method
-from sklearn.model_selection import train_test_split    #needed for custom train method
+from torch.utils.data import DataLoader, WeightedRandomSampler  # needed for custom train method
 
-from dataset import get_dataset #needed for custom train method
-from model import get_model #needed for custom train method
-from preprocessing import select_preprocessing  #needed for custom train method
+from dataset import get_dataset  # needed for custom train method
+from model import get_model  # needed for custom train method
+from preprocessing import select_preprocessing  # needed for custom train method
 
 
-def get_sweep_config(metric = "loss", goal = "minimize", method = "random",
-                    custom_model=False, early_terminate = None):
-
+def get_sweep_config(metric="loss", goal="minimize", method="random",
+                     custom_model=False, early_terminate=None):
     sweep_config = {
-        "method": method #to be specified by user
-        }
-    
+        "method": method  # to be specified by user
+    }
+
     metric = {
-        "name": metric, #to be specified by user
-        "goal": goal #to be specified by user
-        }
+        "name": metric,  # to be specified by user
+        "goal": goal  # to be specified by user
+    }
     sweep_config["metric"] = metric
 
-    #parameters to sweep over (dropout not possible atm because models need custom input for dropout)
+    # parameters to sweep over (dropout not possible atm because models need custom input for dropout)
     parameters_dict = {
         "optimizer": {
-            "values": ['sgd', 'adam'] # options: adam, sgd
-            },
+            "values": ['sgd', 'adam']  # options: adam, sgd
+        },
         "dataset": {
-            "values": ["RAF-DB", "AffectNet"] # options: AffectNet, RAF-DB
-            },
+            "values": ["RAF-DB", "AffectNet"]  # options: AffectNet, RAF-DB
+        },
         "batch_size": {
-            "values": [16, 24, 32, 64, 128] # defined here since log distribution causes bad comparability
-            },
+            "values": [16, 24, 32, 64, 128]  # defined here since log distribution causes bad comparability
+        },
         "model_name": {
-            "values": ["model_name"] 
-            } # options: EmotionModel_2, CustomEmotionModel_3, LeNet, ResNet18
-        }
+            "values": ["model_name"]
+        }  # options: EmotionModel_2, CustomEmotionModel_3, LeNet, ResNet18
+    }
     sweep_config["parameters"] = parameters_dict
 
     if sweep_config["method"] == "grid":
         parameters_dict.update({
             'epochs': {
                 'value': 1}
-            })
+        })
     else:
         parameters_dict.update({
             "learning_rate": {
                 # a flat distribution between 0 and 0.1
-                'distribution': 'uniform', 
+                'distribution': 'uniform',
                 'min': 0.0001,
                 'max': 0.1
             },
             'epochs': {
-                'value': 3 # adjust to your liking (3 gives more accurate results than 1)
+                'value': 3  # adjust to your liking (3 gives more accurate results than 1)
             }
         })
     sweep_config["parameters"] = parameters_dict
@@ -109,7 +106,6 @@ def train_epoch(model, loader, optimizer, device):
 
 
 def get_optimizer_sweep(optimizer, model, learning_rate):
-    
     if optimizer == "adam":
         optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     elif optimizer == "sgd":
@@ -124,7 +120,6 @@ def get_sweep_loader(config):
     preprocessing = select_preprocessing("StandardizeRGB()")
     dataset = get_dataset(config["dataset"], preprocessing=preprocessing, black_and_white=False)
 
-    
     y = [label for _, label in dataset]
     class_counts = np.bincount(y)
     class_weights = 1. / class_counts
@@ -134,6 +129,5 @@ def get_sweep_loader(config):
 
     # Create the dataloaders
     loader = DataLoader(dataset, batch_size=config["batch_size"], sampler=sampler)
-    
 
     return loader

@@ -141,12 +141,12 @@ class CustomEmotionModel_3(nn.Module):
         x = self.avgpool(x)
         x = self.flatten(x)
         x = F.relu(self.fc1(x))
-        x = self.dropout(x) 
+        x = self.dropout(x)
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
 
         return x
-    
+
 
 class CustomEmotionModel_4(nn.Module):
     def __init__(self, num_classes=6):
@@ -173,7 +173,7 @@ class CustomEmotionModel_4(nn.Module):
         x = self.fc2(x)
 
         return x
-  
+
 
 MODELS = {
     'LeNet': LeNet,
