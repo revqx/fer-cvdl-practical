@@ -135,8 +135,8 @@ def ensemble(data_path=os.getenv("DATASET_VALIDATION_PATH")):
 @app.command()
 def initialize_sweep(entity: str = "your_user_name", count: int = 30):
     project = "cvdl"
-    entity = "e-schmitz"
-
+    entity = "your_user_name" # system ignores some user names -> input name here
+    
     if entity == "your_user_name":
         raise ValueError("Please enter your user name.")
 
