@@ -48,16 +48,22 @@ def initialize_out(cap, file, codec='XVID'):
 def predict_emotion(image, model, preprocessing, device):
     """Predict the emotion of the given image"""
     resized_image = cv2.resize(image, (64, 64))
-    torch_image = torch.from_numpy(resized_image).permute(2, 0, 1).float().to(device)
+    normalized_image = resized_image / 255.0
+    torch_image = torch.from_numpy(normalized_image).unsqueeze(0).permute(0, 3, 1, 2).float().to(device)
 
     if preprocessing:
         torch_image = preprocessing(torch_image)
 
     with torch.no_grad():
-        output = model(torch_image.unsqueeze(0))
-        predicted = torch.argmax(output[0]).item()
-
-    return LABEL_TO_STR[predicted]
+        output = model(torch_image)
+        predictions = torch.nn.functional.softmax(output, dim=1) 
+        predicted_class = torch.argmax(predictions, 1)
+        label = LABEL_TO_STR[predicted_class.item()]
+        
+        # print("Raw Scores:", predictions.flatten().tolist())
+        # print("Predicted Emotion:", label)
+        
+    return label
 
 
 def process_frame(frame, face_cascade, model, device, preprocessing):
