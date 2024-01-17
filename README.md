@@ -78,3 +78,15 @@ python main.py ensemble
 Optional Arguments:
 
 - `<data-path>` path to the data to be analyzed, default is the validation set (see `.env`)
+
+### Initializing a hyperparametersweep
+
+```bash
+python main.py initialize_sweep <user_name>
+```
+
+Optional Arguments:
+
+- `<count> number of runs to be performed on the sweep
+- sweep config to be defined in `sweep.py` 
+
