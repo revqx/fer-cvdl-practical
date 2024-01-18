@@ -123,8 +123,16 @@ def train_val_dataloaders(dataset, config):
         y = [label for _, label in train_data]
         class_counts = np.bincount(y)
         class_weights = 1. / class_counts
-        weights = class_weights[y]
-        # Create the sampler
+        weights = class_weights[labels]
+
+        if config["weak_class_adjust"]:
+            # Increase the weight of the fear class
+            fear_class = 2  # the class index should be 2
+            weights[labels == fear_class] *= 1
+            disgust_class = 1
+            weights[labels == disgust_class] *= 1
+
+
         sampler = WeightedRandomSampler(weights, len(weights))
 
     # Create the dataloaders

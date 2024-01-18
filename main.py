@@ -25,8 +25,8 @@ DEFAULT_TRAIN_CONFIG = {
     "preprocessing": "StandardizeRGB()",  # everything done on the 64x64 tensors
     # Options: StandardizeGray(), StandardizeRGB()
     "black_and_white": False,  # switches between 1 and 3 channels
-    "validation_split": 0.2,
-    "learning_rate": 0.07,
+    "validation_split": 0.1,
+    "learning_rate": 0.05,
     "sampler": "uniform",  # Options: uniform, None
     "patience": 2,
     "epochs": 7,
@@ -38,17 +38,18 @@ DEFAULT_TRAIN_CONFIG = {
 
 # If you want to use a custom config, change this one as you like
 CUSTOM_TRAIN_CONFIG = {
-    "model_name": "CustomEmotionModel_4",
-    # Options: LeNet, ResNet18, EmotionModel_2, CustomEmotionModel_3, CustomEmotionModel_4
+    "model_name": "CustomEmotionModel_5",
+    # Options: LeNet, ResNet18, EmotionModel_2, CustomEmotionModel_3, CustomEmotionModel_4, CustomEmotionModel_5
     "model_description": "",
     "train_data": "RAF-DB",
     # Options: AffectNet, RAF-DB
     "preprocessing": "",  # everything done on the 64x64 tensors
     # Options: StandardizeGray(), StandardizeRGB()
-    "epochs": 10,
+    "epochs": 15,
     "batch_size": 32,
     "device": "cpu",
     "patience": 2,
+    "weak_class_adjust": False,
 }
 
 # In case you want to create an ensemble model, add the model names/id here
@@ -133,7 +134,7 @@ def ensemble(data_path=os.getenv("DATASET_VALIDATION_PATH")):
 
 
 @app.command()
-def initialize_sweep(entity: str = "your_user_name", count: int = 30):
+def initialize_sweep(entity: str = "your_user_name", count: int = 40):
     project = "cvdl"
     entity = "e-schmitz"
 

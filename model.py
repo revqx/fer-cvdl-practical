@@ -82,23 +82,29 @@ class EmotionModel(nn.Module):
         return x
 
 
-def _create_conv_block(in_channels, out_channels):
+def _create_conv_block(in_channels, out_channels, pool=True):
     block = nn.Sequential(
         nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1),
         nn.BatchNorm2d(out_channels),
         nn.ReLU(inplace=True),
         nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1),
         nn.BatchNorm2d(out_channels),
-        nn.ReLU(inplace=True),
-        nn.MaxPool2d(kernel_size=2, stride=2)
+        nn.ReLU(inplace=True)
     )
+
+    if pool:
+        block = nn.Sequential(
+            block,
+            nn.MaxPool2d(kernel_size=2, stride=2)
+        )
+
     return block
 
 
 def _create_conv_block_2(in_channels, out_channels, pool=True):
     block = nn.Sequential(
         nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=2),
-        nn.BatchNorm2d(out_channels),
+        nn.BatchNorm2d(out_channels), 
         nn.ReLU(inplace=True),
         nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=2),
         nn.BatchNorm2d(out_channels),
@@ -111,7 +117,7 @@ def _create_conv_block_2(in_channels, out_channels, pool=True):
     if pool:
         block = nn.Sequential(
             block,
-            nn.MaxPool2d(kernel_size=2, stride=2)
+            nn.MaxPool2d(kernel_size=3, stride=2)
         )
 
     return block
@@ -124,7 +130,7 @@ class CustomEmotionModel_3(nn.Module):
         self.conv_block1 = _create_conv_block(3, 64)
         self.conv_block2 = _create_conv_block(64, 128)
         self.conv_block3 = _create_conv_block(128, 256)
-        self.conv_block4 = _create_conv_block(256, 512)
+        self.conv_block4 = _create_conv_block(256, 512, pool=False)
 
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.flatten = nn.Flatten()
@@ -173,6 +179,36 @@ class CustomEmotionModel_4(nn.Module):
         x = self.fc2(x)
 
         return x
+    
+
+class CustomEmotionModel_5(nn.Module):
+    def __init__(self, num_classes=6):
+        super(CustomEmotionModel_5, self).__init__()
+
+        self.conv_block1 = _create_conv_block(3, 64)
+        self.conv_block2 = _create_conv_block_2(64, 128)
+        self.conv_block3 = _create_conv_block(128, 256)
+        self.conv_block4 = _create_conv_block_2(256, 128, pool=False) #to test wether disgust performance relies on 3x3 convolutions
+
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.flatten = nn.Flatten()
+        self.fc1 = nn.Linear(128, 64)
+        self.dropout = nn.Dropout(0.2)
+        self.fc2 = nn.Linear(64, num_classes)
+
+    def forward(self, x):
+        x = self.conv_block1(x)
+        x = self.conv_block2(x)
+        x = self.conv_block3(x)
+        x = self.conv_block4(x)
+        x = self.avgpool(x)
+        x = self.flatten(x)
+        x = F.relu(self.fc1(x))
+        x = self.dropout(x)
+        x = self.fc2(x)
+
+
+        return x
   
 
 MODELS = {
@@ -180,5 +216,6 @@ MODELS = {
     'ResNet18': ResNet18,
     'EmotionModel_2': EmotionModel,
     'CustomEmotionModel_3': CustomEmotionModel_3,
-    'CustomEmotionModel_4': CustomEmotionModel_4
+    'CustomEmotionModel_4': CustomEmotionModel_4,
+    'CustomEmotionModel_5': CustomEmotionModel_5,
 }
