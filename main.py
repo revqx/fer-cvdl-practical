@@ -9,9 +9,9 @@ from analyze import accuracies, confusion_matrix, analyze_run_and_upload
 from clip_affect_net import clip_affect_net_faces
 from ensemble import ensemble_results
 from inference import apply_model
+from sweeps import get_sweep_config, train_sweep
 from train import train_model
 from video_prediction import make_video_prediction
-from sweeps import get_sweep_config, train_sweep
 
 load_dotenv()
 app = typer.Typer()
@@ -32,7 +32,7 @@ DEFAULT_TRAIN_CONFIG = {
     "epochs": 7,
     "batch_size": 64,
     "loss_function": "CrossEntropyLoss",
-    "optimizer": "SGD", # Options: Adam, SGD
+    "optimizer": "SGD",  # Options: Adam, SGD
     "device": "cpu",
 }
 
@@ -136,15 +136,15 @@ def ensemble(data_path=os.getenv("DATASET_VALIDATION_PATH")):
 @app.command()
 def initialize_sweep(entity: str = "your_user_name", count: int = 40):
     project = "cvdl"
-    entity = "e-schmitz"
-
+    entity = "your_user_name" # system ignores some user names -> input name here
+    
     if entity == "your_user_name":
         raise ValueError("Please enter your user name.")
-    
+
     sweep_config = get_sweep_config()
 
-    sweep_id = wandb.sweep(sweep_config, project = project, entity = entity)
-    wandb.agent(sweep_id, function = train_sweep, count = count) 
+    sweep_id = wandb.sweep(sweep_config, project=project, entity=entity)
+    wandb.agent(sweep_id, function=train_sweep, count=count)
 
 
 if __name__ == "__main__":
