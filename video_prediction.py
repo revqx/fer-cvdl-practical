@@ -8,7 +8,6 @@ from utils import LABEL_TO_STR
 
 FACE_CASCADE_PATH = "cascades/haarcascade_frontalface_default.xml"
 
-
 def initialize_model(model_name: str):
     """Initialize the model with the given name"""
     _, model, preprocessing = load_model_and_preprocessing(model_name)
@@ -17,7 +16,6 @@ def initialize_model(model_name: str):
     model.to(device)
 
     return model, preprocessing, device
-
 
 def initialize_cap(webcam: bool, video_input: str):
     """Initialize the camera or video input"""
@@ -34,7 +32,6 @@ def initialize_cap(webcam: bool, video_input: str):
 
     return cap
 
-
 def initialize_out(cap, file, codec='XVID'):
     """Initialize the video output"""
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH) + 0.5)
@@ -43,7 +40,6 @@ def initialize_out(cap, file, codec='XVID'):
 
     fourcc = cv2.VideoWriter_fourcc(*codec)
     return cv2.VideoWriter(file, fourcc, fps, (width, height))
-
 
 def predict_emotion(image, model, preprocessing, device):
     """Predict the emotion of the given image"""
@@ -58,15 +54,13 @@ def predict_emotion(image, model, preprocessing, device):
         output = model(torch_image)
         predictions = torch.nn.functional.softmax(output, dim=1) 
         predicted_class = torch.argmax(predictions, 1)
-        label = LABEL_TO_STR[predicted_class.item()]
+        emotion = LABEL_TO_STR[predicted_class.item()]
         
-        # print("Raw Scores:", predictions.flatten().tolist())
-        # print("Predicted Emotion:", label)
+        score = predictions[0][predicted_class].item()
         
-    return label
+    return emotion, score
 
-
-def process_frame(frame, face_cascade, model, device, preprocessing):
+def process_frame(frame, face_cascade, model, device, preprocessing, emotion_score):
     """Process the frame and return the frame with the predicted emotions"""
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     faces = face_cascade.detectMultiScale(gray, 1.3, 5)
@@ -74,8 +68,11 @@ def process_frame(frame, face_cascade, model, device, preprocessing):
     RECTANGLE_COLOR = (255, 0, 0)
 
     for (x, y, w, h) in faces:
-        emotion = predict_emotion(frame[y:y + h, x:x + w], model, preprocessing, device)
-
+        emotion, score = predict_emotion(frame[y:y + h, x:x + w], model, preprocessing, device)
+        
+        emotion_score[emotion]['total_score'] += score
+        emotion_score[emotion]['count'] += 1
+    
         cv2.rectangle(frame, (x, y), (x + w, y + h), RECTANGLE_COLOR, 2)
         cv2.putText(frame, emotion, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, RECTANGLE_COLOR, 2)
 
@@ -85,6 +82,8 @@ def process_frame(frame, face_cascade, model, device, preprocessing):
 def main_loop(cap, face_cascade, model, device, preprocessing, show_processing):
     """Main loop for video prediction"""
     print("Starting video prediction...")
+    
+    emotion_scores = {emotion: {'total_score': 0, 'count': 0} for emotion in LABEL_TO_STR.values()}
 
     while True:
         has_frame, frame = cap.read()
@@ -92,7 +91,8 @@ def main_loop(cap, face_cascade, model, device, preprocessing, show_processing):
         if not has_frame:
             break
 
-        processed_frame = process_frame(frame, face_cascade, model, device, preprocessing)
+        
+        processed_frame = process_frame(frame, face_cascade, model, device, preprocessing, emotion_scores)
         if show_processing:
             cv2.imshow('Facial Emotion Recognition', processed_frame)
 
@@ -102,9 +102,12 @@ def main_loop(cap, face_cascade, model, device, preprocessing, show_processing):
         if q_pressed or window_closed:
             print("Video prediction interrupted.")
             break
+    
+    for emotion, score in emotion_scores.items():
+        average_score = score['total_score'] / score['count'] if score['count'] > 0 else 0
+        print(f"Emotion: {emotion}, Average Score: {average_score:.2f}")
 
-
-def make_video_prediction(model_name: str, webcam: bool, video_input: str, output_file: str, show_processing: bool):
+def make_video_prediction(model_name: str, record: bool, webcam: bool, video_input: str, output_file: str, show_processing: bool):
     """Make video prediction using the model with the given name"""
     if not os.path.isfile(FACE_CASCADE_PATH):
         raise IOError(
@@ -115,7 +118,9 @@ def make_video_prediction(model_name: str, webcam: bool, video_input: str, outpu
     model, preprocessing, device = initialize_model(model_name)
 
     cap = initialize_cap(webcam, video_input)
-    out = initialize_out(cap, output_file)
+    
+    if record:
+        out = initialize_out(cap, output_file)
 
     try:
         main_loop(cap, face_cascade, model, device, preprocessing, show_processing)
@@ -123,7 +128,8 @@ def make_video_prediction(model_name: str, webcam: bool, video_input: str, outpu
         print(e)
     finally:
         cap.release()
-        out.release()
+        if record:
+            out.release()
         cv2.destroyAllWindows()
 
     print(f"Video successfully saved as {output_file}")

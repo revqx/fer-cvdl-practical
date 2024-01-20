@@ -93,13 +93,17 @@ def analyze(model_name: str, data_path: str = os.getenv("DATASET_VALIDATION_PATH
 
 
 @app.command()
-def demo(model_name: str, output_path: str, webcam: bool = False, input_file: str = "", show_processing: bool = True):
+def demo(model_name: str, record: bool = False, webcam: bool = False, input_file: str = "", show_processing: bool = True):
     if not webcam and not input_file:
         raise typer.BadParameter("Please specify a video input when not using the camera.")
+    
+    output_dir = os.getenv("VIDEO_OUTPUT_PATH") 
+    if not os.path.exists(output_dir) and record:
+        os.makedirs(output_dir, exist_ok=True)
 
     timestamp = datetime.now().strftime("%Y%m%dT%H%M%S")
-    output_file = os.path.join(output_path, f"{model_name}-{timestamp}.avi")
-    make_video_prediction(model_name, webcam, input_file, output_file, show_processing)
+    output_file = os.path.join(output_dir, f"{model_name}-{timestamp}.avi")
+    make_video_prediction(model_name, record, webcam, input_file, output_file, show_processing)
 
 
 @app.command()
