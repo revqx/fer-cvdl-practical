@@ -1,9 +1,11 @@
 import os
 from datetime import datetime
+import json
 
 import typer
 import wandb
 from dotenv import load_dotenv
+from utils import LABEL_TO_STR, label_from_path
 
 from analyze import accuracies, confusion_matrix, analyze_run_and_upload
 from clip_affect_net import clip_affect_net_faces
@@ -148,6 +150,33 @@ def initialize_sweep(entity: str = "your_user_name", count: int = 30):
 
     sweep_id = wandb.sweep(sweep_config, project=project, entity=entity)
     wandb.agent(sweep_id, function=train_sweep, count=count)
+
+
+@app.command()
+def getActivation(model_name: str, data_path: str = os.getenv("DATASET_VALIDATION_PATH"),
+                     output_path: str = os.getenv("ACTIVATION_VALUES_PATH")):
+    
+    model_id, results = apply_model(model_name, data_path)
+    labels = []
+    activation_values_dict = {}
+
+    for path, *values in results.values:
+        label = label_from_path(path)
+        labels.append(label)
+        if label is None:
+            raise ValueError(f"Could not find label in path {path}.")
+
+        if model_name not in activation_values_dict:
+            activation_values_dict[model_name] = {}
+
+        if label not in activation_values_dict[model_name]:
+            activation_values_dict[model_name][label] = []
+
+        activation_values_dict[model_name][label].append(values)
+
+    # save values locally as a json file (folder path from env file)
+    with open(f'{output_path}\\activation_values.json', 'w') as f:
+        json.dump(activation_values_dict, f)
 
 
 if __name__ == "__main__":
