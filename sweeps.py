@@ -1,16 +1,21 @@
 import numpy as np  # needed for custom train method
 import torch  # needed for device and custom train method
 import torch.nn.functional as F  # needed for custom train method
+
+import torch.nn as nn  # needed for dynamic model
 import wandb
 from torch.utils.data import DataLoader, WeightedRandomSampler  # needed for custom train method
 
 from dataset import get_dataset  # needed for custom train method
+from model import get_model, _create_conv_block, _create_conv_block_2  # needed for custom train method
 from model import get_model  # needed for custom train method
 from preprocessing import select_preprocessing  # needed for custom train method
 
 
 def get_sweep_config(metric="loss", goal="minimize", method="random",
+                     custom_model=True, early_terminate=None):
                      custom_model=False, early_terminate=None):
+      
     sweep_config = {
         "method": method  # to be specified by user
     }
@@ -24,6 +29,16 @@ def get_sweep_config(metric="loss", goal="minimize", method="random",
     # parameters to sweep over (dropout not possible atm because models need custom input for dropout)
     parameters_dict = {
         "optimizer": {
+
+            "values": ['sgd']  # options: adam, sgd
+        },
+        "dataset": {
+            "values": ["RAF-DB"]  # options: AffectNet, RAF-DB
+        },
+        "batch_size": {
+            "values": [16, 24, 32]  # defined here since log distribution causes bad comparability
+        }
+
             "values": ['sgd', 'adam']  # options: adam, sgd
         },
         "dataset": {
@@ -35,8 +50,27 @@ def get_sweep_config(metric="loss", goal="minimize", method="random",
         "model_name": {
             "values": ["model_name"]
         }  # options: EmotionModel_2, CustomEmotionModel_3, LeNet, ResNet18
+
     }
     sweep_config["parameters"] = parameters_dict
+
+    if custom_model:
+        parameters_dict.update({
+            "dropout": {
+                "values": [0.0, 0.1, 0.2, 0.3, 0.4, 0.5]
+            },
+            "layer_count": {
+                "values": [0, 1, 2, 3, 4, 5]
+            }
+        })
+        sweep_config["parameters"] = parameters_dict
+    else:
+        parameters_dict.update({
+        "model_name": {
+            "values": ["model_name"]
+        }  # options: EmotionModel_2, CustomEmotionModel_3, LeNet, ResNet18
+        })
+        sweep_config["parameters"] = parameters_dict
 
     if sweep_config["method"] == "grid":
         parameters_dict.update({
@@ -63,8 +97,8 @@ def get_sweep_config(metric="loss", goal="minimize", method="random",
     return sweep_config
 
 
-def train_sweep():
-    config = get_sweep_config()
+def train_sweep(custom_model=True):
+    config = get_sweep_config(custom_model=custom_model)
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -73,8 +107,13 @@ def train_sweep():
 
         # get dataset and dataloaders (val_loader not needed for now)
         loader = get_sweep_loader(config)
+
         # get model
-        model = get_model(config["model_name"])
+        if custom_model:
+            model = get_dynamic_model(config)
+        else:
+            model = get_model(config["model_name"])
+
         model.to(device)
 
         optimizer = get_optimizer_sweep(config["optimizer"], model, config.learning_rate)
@@ -131,3 +170,57 @@ def get_sweep_loader(config):
     loader = DataLoader(dataset, batch_size=config["batch_size"], sampler=sampler)
 
     return loader
+
+
+class DynamicModel(nn.Module):
+    def __init__(self, hidden_layers, dropout, num_classes=6):
+        super(DynamicModel, self).__init__()
+
+        self.conv_block1 = _create_conv_block(3, 64)
+        self.conv_block2 = _create_conv_block(64, 128)
+        self.conv_block3 = _create_conv_block(128, 256)
+        self.conv_block4 = _create_conv_block(256, 512, pool=False)
+
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.flatten = nn.Flatten()
+
+        self.hidden_layers = nn.ModuleList()
+
+        if hidden_layers > 0:
+            # first hidden layer has output size of last conv block
+            self.hidden_layers.append(nn.Linear(512, 256))
+
+            # dynamic number of hidden layers
+            for _ in range(hidden_layers - 1):
+                self.hidden_layers.append(nn.Linear(256 // 2**_, 256 // 2**(_ + 1)))
+
+            # define output layer depending on number of hidden layers
+            self.output = nn.Linear(256 // 2**(hidden_layers - 1), num_classes)
+
+            self.dropout = nn.Dropout(dropout)
+
+        else:
+            # define output layer in case of no hidden layers
+            self.output = nn.Linear(512, num_classes)
+
+    def forward(self, x):
+        x = self.conv_block1(x)
+        x = self.conv_block2(x)
+        x = self.conv_block3(x)
+        x = self.conv_block4(x)
+        x = self.avgpool(x)
+        x = self.flatten(x)
+
+        for linear in self.hidden_layers:
+            x = F.relu(linear(x))
+            x = self.dropout(x)
+
+        x = self.output(x)
+
+        return x
+    
+
+def get_dynamic_model(config):
+    model = DynamicModel(config["layer_count"], config["dropout"])
+    return model
+    
