@@ -29,14 +29,14 @@ def apply_model(model_name: str, data_path: str):
     columns = ['file'] + [LABEL_TO_STR[i] for i in range(len(LABEL_TO_STR))]
     results_df = pd.DataFrame(columns=columns)
 
-    images = load_images(data_path)
-    for file_name, image in tqdm(images, desc=f"Inference of {data_path}"):
+    path_tensor_pairs = load_images([data_path])
+    for path, image in tqdm(path_tensor_pairs, desc=f"Inference of {data_path}"):
         image = image.to(device)
         if preprocessing:
             image = preprocessing(image)
         image = image.unsqueeze(0)
         output = model(image).tolist()[0]
-        results_df.loc[len(results_df)] = [file_name] + output
+        results_df.loc[len(results_df)] = [path] + output
 
     return model_id, results_df
 
@@ -69,10 +69,10 @@ def load_model_and_preprocessing(model_name: str) -> (str, torch.nn.Module, torc
         timestamps = [os.path.basename(file).split('-')[-2] for file in possible]
 
         # Find the index of the most recent timestamp
-        latest_index = timestamps.index(max(timestamps))
+        latest_idx = timestamps.index(max(timestamps))
 
         # Load the most recent model
-        selected_model_path = possible[latest_index]
+        selected_model_path = possible[latest_idx]
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     loaded_model_dict = torch.load(selected_model_path, map_location=device)

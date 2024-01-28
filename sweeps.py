@@ -169,7 +169,7 @@ def get_optimizer_sweep(optimizer, model, learning_rate):
 
 def get_sweep_loader(config):
     preprocessing = select_preprocessing("StandardizeRGB()")
-    dataset = get_dataset(config["dataset"], preprocessing=preprocessing, black_and_white=False)
+    dataset = get_dataset(config["dataset"], preprocessing=preprocessing, grayscale=False)
 
     y = [label for _, label in dataset]
     class_counts = np.bincount(y)
@@ -188,6 +188,8 @@ def get_sweep_loader(config):
     # has to be turned back into a dataset to use train_test_split
     uniform_dataset, uniform_labels = next(iter(loader))
 
+    # wir müssen wissen wie viele bilder wir benutzen dürfen in abh von unserem split, weil im im train set vier mal so viele drin sind
+    # 0.8 = Anzahl der Augmentations * x / Anzahl der Trainingssamples
     train_data, val_data, train_labels, val_labels = train_test_split(uniform_dataset, uniform_labels, test_size=config["validation_split"], stratify=uniform_labels)
 
     train_loader = DataLoader(list(zip(train_data, train_labels)), batch_size=config["batch_size"])

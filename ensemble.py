@@ -5,7 +5,7 @@ import pandas as pd
 from inference import apply_model
 
 
-def get_model_results(model_ids, data_path=os.getenv("DATASET_VALIDATION_PATH")):
+def get_model_results(model_ids, data_path=os.getenv("DATASET_TEST_PATH")):
     results = []
     paths = []
     columns = None
@@ -22,7 +22,7 @@ def get_model_results(model_ids, data_path=os.getenv("DATASET_VALIDATION_PATH"))
     return results, paths, columns
 
 
-def ensemble_results(model_ids, data_path=os.getenv("DATASET_VALIDATION_PATH")):
+def ensemble_results(model_ids, data_path=os.getenv("DATASET_TEST_PATH")):
     results, paths, columns = get_model_results(model_ids, data_path)
 
     # We have no softmax layer in our models, so we have to use Avaraging method to create the ensemble

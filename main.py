@@ -21,16 +21,17 @@ app = typer.Typer()
 # Default config for training should not be altered by the user
 DEFAULT_TRAIN_CONFIG = {
     "model_name": "LeNet",
-    # Options: LeNet, ResNet18
+    # Options: LeNet, ResNet18, EmotionModel
     "model_description": "",
     "train_data": "AffectNet",  # Options: AffectNet, RAF_DB
     "preprocessing": "StandardizeRGB()",  # everything done on the 64x64 tensors
     # Options: StandardizeGray(), StandardizeRGB()
-    "black_and_white": False,  # switches between 1 and 3 channels
+    "grayscale": False,  # switches between 1 and 3 channels
     "validation_split": 0.1,
-    "learning_rate": 0.05,
+    "learning_rate": 0.03,
     "sampler": "uniform",  # Options: uniform, None
     "patience": 2,
+    "ReduceLR_factor": 0.1,
     "epochs": 7,
     "batch_size": 64,
     "loss_function": "CrossEntropyLoss",
@@ -40,14 +41,14 @@ DEFAULT_TRAIN_CONFIG = {
 
 # If you want to use a custom config, change this one as you like
 CUSTOM_TRAIN_CONFIG = {
-    "model_name": "CustomEmotionModel_5",
+    "model_name": "CustomEmotionModel_3",
     # Options: LeNet, ResNet18, EmotionModel_2, CustomEmotionModel_3, CustomEmotionModel_4, CustomEmotionModel_5
     "model_description": "",
     "train_data": "RAF-DB",
     # Options: AffectNet, RAF-DB
     "preprocessing": "",  # everything done on the 64x64 tensors
     # Options: StandardizeGray(), StandardizeRGB()
-    "epochs": 15,
+    "epochs": 30,
     "batch_size": 32,
     "device": "cpu",
     "patience": 2,
@@ -63,14 +64,15 @@ def train(offline: bool = False):
     # merge default and custom config
     config = DEFAULT_TRAIN_CONFIG | CUSTOM_TRAIN_CONFIG
     # check if valiadation path is valid
-    if not os.path.exists(os.getenv("DATASET_VALIDATION_PATH")):
-        raise FileNotFoundError(f"Directory {os.getenv('DATASET_VALIDATION_PATH')} not found. "
+    if not os.path.exists(os.getenv("DATASET_TEST_PATH")):
+        raise FileNotFoundError(f"Directory {os.getenv('DATASET_TEST_PATH')} not found. "
                                 f"Could not load validation dataset.")
 
     # disable wandb if offline
     os.environ['WANDB_MODE'] = 'offline' if offline else 'online'
     wandb.init(project="cvdl", config=config)
-    _ = train_model(config)
+    train_model(config)
+
     # test model on validation data
     analyze_run_and_upload(config["model_name"])
 
@@ -83,11 +85,11 @@ def inference(model_name: str, data_path: str, output_path: str):
     folder_name = data_path.split('/')[-1]
     output_file_name = f"{folder_name}-{timestamp}-{model_id}.csv"
     print(f"Writing results to {output_file_name}.")
-    results.to_csv(os.path.join(output_path, output_file_name), index=False)
+    results.to_csv(os.path.join(output_path, output_file_name), idx=False)
 
 
 @app.command()
-def analyze(model_name: str, data_path: str = os.getenv("DATASET_VALIDATION_PATH")):
+def analyze(model_name: str, data_path: str = os.getenv("DATASET_TEST_PATH")):
     model_id, results = apply_model(model_name, data_path)
     top_n = accuracies(results, best=3)
     conf_matrix = confusion_matrix(results)
@@ -129,7 +131,7 @@ def clipped(output_dir: str = "data/clipped_affect_net", use_rafdb_format: bool 
 
 
 @app.command()
-def ensemble(data_path=os.getenv("DATASET_VALIDATION_PATH")):
+def ensemble(data_path=os.getenv("DATASET_TEST_PATH")):
     model_ids = ENSEMBLE_MODELS
     ensemble_results_df = ensemble_results(model_ids, data_path)
 
@@ -154,7 +156,7 @@ def initialize_sweep(entity: str = "your_user_name", count: int = 40):
 
 
 @app.command()
-def getActivation(model_name: str, data_path: str = os.getenv("DATASET_VALIDATION_PATH"),
+def getActivation(model_name: str, data_path: str = os.getenv("DATASET_TEST_PATH"),
                      output_path: str = os.getenv("ACTIVATION_VALUES_PATH")):
     
     model_id, results = apply_model(model_name, data_path)

@@ -3,21 +3,22 @@ from torchvision.transforms import v2
 
 
 def select_preprocessing(transforms_str):
+    # TODO: delete current prepr and add Standardization and grayscale
     """Select the appropriate transforms for the dataset."""
     if not transforms_str:
         return None
 
     # Split the preprocessing string into individual transforms and strip whitespace
-    transforms_strings = transforms_str.split(", ")
+    transforms_strings = [t.strip() for t in transforms_str.split(",")]
 
     # Create a list of transforms
     transform_list = []
 
     transforms_available = {
-        "Resize()": v2.Resize((64, 64)),
-        "ToTensor()": v2.Compose([v2.ToImage(), v2.ToDtype(torch.float32, scale=True)]),
-        "StandardizeGray()": v2.Normalize((0.5,), (0.5,)),
-        "StandardizeRGB()": v2.Normalize((0.5, 0.5, 0.5,), (0.5, 0.5, 0.5,))
+        "TrivialAugmentWide()": v2.TrivialAugmentWide(),
+        "RandAugment()": v2.RandAugment(),
+        "AutoAugment()": v2.AutoAugment(),
+        "RandomHorizontalFlip()": v2.RandomHorizontalFlip()
     }
 
     # Loop over the transforms and add them to the list

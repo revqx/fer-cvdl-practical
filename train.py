@@ -8,8 +8,7 @@ from sklearn.model_selection import train_test_split
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader, WeightedRandomSampler
 from tqdm import tqdm
-
-from dataset import get_dataset
+from dataset import get_dataset, DatasetWrapper
 from model import get_model
 from preprocessing import select_preprocessing
 
@@ -28,18 +27,18 @@ def train_model(config: dict):
     # Define the preprocessing
     preprocessing = select_preprocessing(config['preprocessing'])
 
-    dataset = get_dataset(config["train_data"], preprocessing=preprocessing, black_and_white=config["black_and_white"])
-    train_loader, val_loader = train_val_dataloaders(dataset, config)
+    dataset = get_dataset(config["train_data"])
+    train_loader, val_loader = train_val_dataloaders(dataset, preprocessing,
+                                                     config["validation_split"], config["batch_size"],
+                                                     config["sampler"], config["weak_class_adjust"])
 
     # Model selection
     model = get_model(config["model_name"])
     model.to(device)
 
-    # TODO: Add loss function selection
     # Define loss function and optimizer
     criterion = torch.nn.CrossEntropyLoss()
 
-    # Adam with beta1=0.9 and beta2=0.999
     if config["optimizer"] == "Adam":
         optimizer = torch.optim.Adam(model.parameters(), lr=config["learning_rate"])
     elif config["optimizer"] == "SGD":
@@ -56,7 +55,6 @@ def train_model(config: dict):
     path = os.path.join(path, f"{config['model_name']}-{timestamp}-{wandb_id}.pth")
     torch.save({'model': model.state_dict(), 'preprocessing': preprocessing}, path)
     print(f"Saved the model to {path}.")
-    return model
 
 
 def training_loop(model, train_loader, val_loader, criterion, optimizer, scheduler, config):
@@ -112,34 +110,37 @@ def training_loop(model, train_loader, val_loader, criterion, optimizer, schedul
         wandb.log(metrics)
 
 
-def train_val_dataloaders(dataset, config):
-    if config["sampler"] == "uniform":
-        labels = [label for _, label in dataset]
+def train_val_dataloaders(dataset, preprocessing, validation_split, batch_size, sampler=None, weak_class_adjust=False):
+    img_paths = [path for path, _ in dataset]
+    labels = [label for _, label in dataset]
+
+    if sampler == "uniform":
+        # Calculate class weights for balancing
         class_counts = np.bincount(labels)
         class_weights = 1. / class_counts
+
+        if weak_class_adjust:
+            # Adjust weights for specific classes
+            fear_class, disgust_class = 2, 1
+            class_weights[fear_class] *= 1
+            class_weights[disgust_class] *= 1
+
         weights = class_weights[labels]
-
-        if config["weak_class_adjust"]:
-            # Increase the weight of the fear class
-            fear_class = 2  # the class index should be 2
-            weights[labels == fear_class] *= 1
-            disgust_class = 1
-            weights[labels == disgust_class] *= 1
-
         sampler = WeightedRandomSampler(weights, len(weights))
-
         loader = DataLoader(dataset, batch_size=len(dataset), sampler=sampler)
 
-        # has to be turned back into a dataset to use train_test_split
-        uniform_dataset, uniform_labels = next(iter(loader))
+        img_paths, labels = next(iter(loader))
 
-    else: # in case no input or other than uniform is given
-        uniform_dataset, uniform_labels = dataset, [label for _, label in dataset]
+    # Apply stratified train-test split on the original dataset
+    train_data, val_data, train_labels, val_labels = train_test_split(
+        img_paths, labels, test_size=validation_split, stratify=labels)
 
-    # redefine labels to base the stratification on so distribution is consistent
-    train_data, val_data, train_labels, val_labels = train_test_split(uniform_dataset, uniform_labels, test_size=config["validation_split"], stratify=uniform_labels)
+    # Create augmented dataset instances for training and validation
+    train_dataset = DatasetWrapper(train_data, train_labels, preprocessing)
+    val_dataset = DatasetWrapper(val_data, val_labels, preprocessing, augment=False)
 
-    train_loader = DataLoader(list(zip(train_data, train_labels)), batch_size=config["batch_size"])
-    val_loader = DataLoader(list(zip(val_data, val_labels)), batch_size=config["batch_size"], shuffle=False)
+    # Create data loaders
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
     return train_loader, val_loader
