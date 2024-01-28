@@ -1,32 +1,26 @@
 import os
-import random
-import torch
-from torchvision import transforms
-from utils import load_images
+import torchvision.transforms as v2
+from utils import load_images, AVAILABLE_AUGMENTATIONS
 
 
-def horizontal_flip(tensor):
-    # Assuming tensor is in CxHxW format
-    return torch.flip(tensor, [2])
+def select_augmentations(augmentations_str: str) -> list[v2.Compose]:
+    if not augmentations_str:
+        return []  # Return an empty Compose object
 
+    augmentation_strings = [aug.strip() for aug in augmentations_str.split(",")]
+    augmentation_list = []
 
-def random_rotation(tensor):
-    angle = random.uniform(-10, 10)
-    return transforms.functional.rotate(tensor, angle)
+    for aug in augmentation_strings:
+        if aug not in AVAILABLE_AUGMENTATIONS:
+            supported = ", ".join(AVAILABLE_AUGMENTATIONS.keys())
+            raise ValueError(f"Unsupported augmentation: {aug}. Supported augmentations are: {supported}")
+        augmentation_list.append(AVAILABLE_AUGMENTATIONS[aug])
+
+    return augmentation_list
 
 
 def tensor_to_image(tensor):
-    # Convert tensor to PIL Image
-    return transforms.ToPILImage()(tensor)
-
-
-def random_scale(tensor):
-    scale = random.uniform(1.0, 1.3)
-    return transforms.functional.affine(tensor, angle=0, translate=[0, 0], scale=scale, shear=0)
-
-
-def small_gaussian_blur(tensor):
-    return transforms.functional.gaussian_blur(tensor, kernel_size=5, sigma=1.0)
+    return v2.ToPILImage()(tensor)
 
 
 def augment_images(input_dir, output_dir, augmentations):
@@ -45,6 +39,7 @@ def augment_images(input_dir, output_dir, augmentations):
 if __name__ == "__main__":
     input_dir = "/Users/marius/github/fer-cvdl-practical/data/augmentations"
     output_dir = "/Users/marius/github/fer-cvdl-practical/data/augmentations"
-    augmentations = [horizontal_flip, random_rotation, random_scale]
+    augmentations_str = "HorizontalFlip,RandomRotation,RandomScale"
 
+    augmentations = select_augmentations(augmentations_str)
     augment_images(input_dir, output_dir, augmentations)

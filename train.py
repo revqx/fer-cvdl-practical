@@ -11,6 +11,7 @@ from tqdm import tqdm
 from dataset import get_dataset, DatasetWrapper
 from model import get_model
 from preprocessing import select_preprocessing
+from augment import select_augmentations
 
 
 def train_model(config: dict):
@@ -24,13 +25,14 @@ def train_model(config: dict):
         print("CUDA not available. Using CPU instead.")
     device = torch.device(config["device"])
 
-    # Define the preprocessing
     preprocessing = select_preprocessing(config['preprocessing'])
+    augmentations = select_augmentations(config['augmentations'])
 
     dataset = get_dataset(config["train_data"])
-    train_loader, val_loader = train_val_dataloaders(dataset, preprocessing,
+    train_loader, val_loader = train_val_dataloaders(dataset, preprocessing, augmentations,
                                                      config["validation_split"], config["batch_size"],
                                                      config["sampler"], config["weak_class_adjust"])
+    print(f"train data: {len(train_loader.dataset)}, val data: {len(val_loader.dataset)}")
 
     # Model selection
     model = get_model(config["model_name"])
@@ -110,7 +112,8 @@ def training_loop(model, train_loader, val_loader, criterion, optimizer, schedul
         wandb.log(metrics)
 
 
-def train_val_dataloaders(dataset, preprocessing, validation_split, batch_size, sampler=None, weak_class_adjust=False):
+def train_val_dataloaders(dataset, preprocessing, augmentations, validation_split, batch_size, sampler=None,
+                          weak_class_adjust=False):
     img_paths = [path for path, _ in dataset]
     labels = [label for _, label in dataset]
 
@@ -136,8 +139,9 @@ def train_val_dataloaders(dataset, preprocessing, validation_split, batch_size, 
         img_paths, labels, test_size=validation_split, stratify=labels)
 
     # Create augmented dataset instances for training and validation
-    train_dataset = DatasetWrapper(train_data, train_labels, preprocessing)
-    val_dataset = DatasetWrapper(val_data, val_labels, preprocessing, augment=False)
+    train_dataset = DatasetWrapper(train_data, train_labels, preprocessing, augmentations)
+    # No augmentations for validation
+    val_dataset = DatasetWrapper(val_data, val_labels, preprocessing)
 
     # Create data loaders
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)

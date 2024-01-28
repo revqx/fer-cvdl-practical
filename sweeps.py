@@ -169,7 +169,7 @@ def get_optimizer_sweep(optimizer, model, learning_rate):
 
 def get_sweep_loader(config):
     preprocessing = select_preprocessing("StandardizeRGB()")
-    dataset = get_dataset(config["dataset"], preprocessing=preprocessing, grayscale=False)
+    dataset = get_dataset(config["dataset"])
 
     y = [label for _, label in dataset]
     class_counts = np.bincount(y)

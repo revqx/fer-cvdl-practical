@@ -32,6 +32,18 @@ transform = v2.Compose([
     v2.ToDtype(torch.float32, scale=True)
 ])
 
+# Define available preprocessing steps outside the function for efficiency
+AVAILABLE_PREPROCESSINGS = {
+    "ImageNetNormalization": lambda: v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    # TODO: try landmark croppping or landmark affine transformation but use ToPILImage() first
+}
+
+# Define available augmentations
+AVAILABLE_AUGMENTATIONS = {
+    "HorizontalFlip": v2.RandomHorizontalFlip(p=1),  # Always apply horizontal flip
+    "RandomRotation": v2.RandomRotation(degrees=(-10, 10)),
+    "RandomScale": v2.RandomAffine(degrees=0, translate=(0, 0), scale=(1.0, 1.3), shear=0)
+}
 
 # laod images from list of paths
 def load_images(paths: list[str]) -> list[tuple[str, torch.Tensor]]:

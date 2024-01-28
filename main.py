@@ -26,9 +26,10 @@ DEFAULT_TRAIN_CONFIG = {
     "train_data": "AffectNet",  # Options: AffectNet, RAF_DB
     "preprocessing": "StandardizeRGB()",  # everything done on the 64x64 tensors
     # Options: StandardizeGray(), StandardizeRGB()
-    "grayscale": False,  # switches between 1 and 3 channels
+    "augmentations": "HorizontalFlip, RandomScale, RandomRotation",
+    # Options: "HorizontalFlip", "RandomRotation", "RandomScale"
     "validation_split": 0.1,
-    "learning_rate": 0.03,
+    "learning_rate": 0.07,
     "sampler": "uniform",  # Options: uniform, None
     "patience": 2,
     "ReduceLR_factor": 0.1,
@@ -47,8 +48,8 @@ CUSTOM_TRAIN_CONFIG = {
     "train_data": "RAF-DB",
     # Options: AffectNet, RAF-DB
     "preprocessing": "",  # everything done on the 64x64 tensors
-    # Options: StandardizeGray(), StandardizeRGB()
-    "epochs": 30,
+    # Options: ImageNetNormalization()
+    "epochs": 15,
     "batch_size": 32,
     "device": "cpu",
     "patience": 2,
