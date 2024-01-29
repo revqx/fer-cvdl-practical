@@ -1,5 +1,6 @@
 import cv2
 import torch
+import numpy as np
 
 from gradcam import overlay
 from inference import load_model_and_preprocessing
@@ -11,6 +12,15 @@ GREEN_COLOR = (0, 255, 0)
 WHITE_COLOR = (255, 255, 255)
 INFO_TEXT_SIZE = 0.7
 DEFAULT_FONT = cv2.FONT_HERSHEY_SIMPLEX
+FACE_CASCADE = cv2.CascadeClassifier(
+    cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+)
+MOUTH_CASCADE = cv2.CascadeClassifier(
+    cv2.data.haarcascades + "haarcascade_smile.xml"
+)
+EYE_CASCADE = cv2.CascadeClassifier(
+    cv2.data.haarcascades + "haarcascade_eye.xml"
+)
 
 
 def initialize_model(model_name: str):
@@ -23,13 +33,10 @@ def initialize_model(model_name: str):
     return model, preprocessing, device
 
 
-def initialize_cap(webcam: bool, video_input: str):
+def initialize_cap(webcam: bool, cam_id: int, video_input: str):
     """Initialize the camera or video input"""
-    if not webcam and not video_input:
-        raise IOError("Please specify a video file to use as input")
-
     if webcam:
-        cap = cv2.VideoCapture(0)
+        cap = cv2.VideoCapture(cam_id)
     else:
         cap = cv2.VideoCapture(video_input)
 
@@ -39,7 +46,11 @@ def initialize_cap(webcam: bool, video_input: str):
     return cap
 
 
-def initialize_out(cap, file, codec="MJPG"):
+def initialize_out(
+    cap: cv2.VideoCapture, 
+    file: str, 
+    codec: str = "MJPG"
+    ):
     """Initialize the video output"""
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH) + 0.5)
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT) + 0.5)
@@ -49,7 +60,7 @@ def initialize_out(cap, file, codec="MJPG"):
     return cv2.VideoWriter(file, fourcc, fps, (width, height))
 
 
-def top_prediction_with_label(predictions):
+def top_prediction_with_label(predictions: torch.Tensor):
     """Return the top prediction with its label"""
     top_prediction = torch.argmax(predictions, 1)
     label = LABEL_TO_STR[top_prediction.item()]
@@ -58,7 +69,12 @@ def top_prediction_with_label(predictions):
     return label, score
 
 
-def predict_emotions(image, model, preprocessing, device):
+def predict_emotions(
+    image: np.ndarray, 
+    model: torch.nn.Module, 
+    preprocessing: torch.nn.Module, 
+    device: str,
+    ):
     """Predict the emotions of the given image"""
     resized_image = cv2.resize(image, (64, 64))
     normalized_image = resized_image / 255.0
@@ -80,10 +96,19 @@ def predict_emotions(image, model, preprocessing, device):
     return predictions
 
 
-def process_frame(frame, face_cascade, model, device, preprocessing, emotion_score):
+def process_frame(
+    frame: np.ndarray, 
+    model: torch.nn.Module, 
+    device: str, 
+    preprocessing: str, 
+    emotion_score: dict,
+    show_explanation: bool,
+    show_details: bool,
+    show_info_box: bool,
+    ):
     """Process the frame and return the frame with the predicted emotions"""
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    faces = face_cascade.detectMultiScale(gray, 1.3, 5)
+    faces = FACE_CASCADE.detectMultiScale(gray, 1.3, 5)
 
     cv2.putText(
         frame,
@@ -101,9 +126,11 @@ def process_frame(frame, face_cascade, model, device, preprocessing, emotion_sco
 
         roi = frame[y : y + h, x : x + w]
 
-        # old way of doing stuff
-        # predictions = predict_emotions(roi, model, preprocessing, device)
-        predictions, picture_with_overlay = overlay(roi, model)
+        if show_explanation:
+            predictions, picture_with_overlay = overlay(roi, model)
+            predictions = torch.nn.functional.softmax(predictions, dim=1)
+        else :
+            predictions = predict_emotions(roi, model, preprocessing, device)
 
         emotion, score = top_prediction_with_label(predictions)
 
@@ -123,17 +150,8 @@ def process_frame(frame, face_cascade, model, device, preprocessing, emotion_sco
             2,
         )
 
-        eye_cascade = cv2.CascadeClassifier(
-            cv2.data.haarcascades + "haarcascade_eye.xml"
-        )
-        smile_cascade = cv2.CascadeClassifier(
-            cv2.data.haarcascades + "haarcascade_smile.xml"
-        )
-
-        show_info_box = True
-        show_details = True
         if show_details:
-            mouths = smile_cascade.detectMultiScale(roi, 1.6, 20)
+            mouths = MOUTH_CASCADE.detectMultiScale(roi, 1.6, 20)
 
             if len(mouths) > 0:
                 (mx, my, mw, mh) = mouths[0]
@@ -148,14 +166,28 @@ def process_frame(frame, face_cascade, model, device, preprocessing, emotion_sco
                     2,
                 )
 
-            eyes = eye_cascade.detectMultiScale(roi, 1.8, 10)
+            eyes = EYE_CASCADE.detectMultiScale(roi, 1.8, 10)
             for x2, y2, w2, h2 in eyes[:2]:
                 eye_center = (x + x2 + w2 // 2, y + y2 + h2 // 2)
                 radius = int(round((w2 + h2) * 0.25))
                 cv2.circle(frame, eye_center, radius, RED_COLOR, 4)
+                
+        if show_explanation:
+            OVERLAY_SIZE = 128
+            picture_with_overlay = cv2.resize(picture_with_overlay, (OVERLAY_SIZE, OVERLAY_SIZE))
+            cv2.putText(
+                frame,
+                f"Face #{id}",
+                (frame.shape[1] - 129 - face_nr * 128 + 10, frame.shape[0] - 138),
+                DEFAULT_FONT,
+                0.5,
+                BLUE_COLOR,
+                2,
+            )
+            frame[- 129 : -1, -129 - face_nr * 129 : -1 - face_nr * 129] = picture_with_overlay
 
         if show_info_box:
-            cv2.rectangle(frame, (10, offset), (200, offset + 150), WHITE_COLOR, 2)
+            cv2.rectangle(frame, (10, offset), (220, offset + 150), WHITE_COLOR, 2)
             cv2.putText(
                 frame,
                 f"Face #{id}",
@@ -165,11 +197,6 @@ def process_frame(frame, face_cascade, model, device, preprocessing, emotion_sco
                 WHITE_COLOR,
                 2,
             )
-
-            OVERLAY_SIZE = 128
-            picture_with_overlay = cv2.resize(picture_with_overlay, (OVERLAY_SIZE, OVERLAY_SIZE))
-            frame[- 129 : -1, -129 - face_nr * 129 : -1 - face_nr * 129] = picture_with_overlay
-
 
             for i, (emotion, score) in enumerate(
                 zip(LABEL_TO_STR.values(), predictions[0])
@@ -188,7 +215,17 @@ def process_frame(frame, face_cascade, model, device, preprocessing, emotion_sco
     return frame
 
 
-def main_loop(cap, face_cascade, model, device, preprocessing, show_processing, webcam):
+def main_loop(
+    cap: cv2.VideoCapture, 
+    model: torch.nn.Module, 
+    device: str, 
+    preprocessing: str,
+    webcam: bool,
+    show_processing: bool, 
+    show_explanation: bool,
+    show_details: bool,
+    show_info_box: bool,
+    ):
     """Main loop for video prediction"""
     print("Starting video prediction...")
 
@@ -206,7 +243,7 @@ def main_loop(cap, face_cascade, model, device, preprocessing, show_processing, 
             frame = cv2.flip(frame, 1)
 
         processed_frame = process_frame(
-            frame, face_cascade, model, device, preprocessing, emotion_scores
+            frame, model, device, preprocessing, emotion_scores, show_explanation, show_details, show_info_box
         )
 
         if show_processing:
@@ -235,25 +272,33 @@ def make_video_prediction(
     model_name: str,
     record: bool,
     webcam: bool,
+    cam_id: int,
     video_input: str,
     output_file: str,
     show_processing: bool,
+    show_explanation: bool,
+    show_details: bool,
+    show_info_box: bool,
 ):
     """Make video prediction using the model with the given name"""
-    face_cascade = cv2.CascadeClassifier(
-        cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
-    )
 
     model, preprocessing, device = initialize_model(model_name)
-
-    cap = initialize_cap(webcam, video_input)
+    cap = initialize_cap(webcam, cam_id, video_input)
 
     if record:
         out = initialize_out(cap, output_file)
 
     try:
         main_loop(
-            cap, face_cascade, model, device, preprocessing, show_processing, webcam
+            cap, 
+            model, 
+            device, 
+            preprocessing, 
+            webcam, 
+            show_processing, 
+            show_explanation, 
+            show_details, 
+            show_info_box
         )
     except Exception as e:
         print(e)
@@ -261,6 +306,7 @@ def make_video_prediction(
         cap.release()
         if record:
             out.release()
+            print(f"Video successfully saved as {output_file}")
         cv2.destroyAllWindows()
 
-    print(f"Video successfully saved as {output_file}")
+

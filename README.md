@@ -53,8 +53,12 @@ python main.py demo <model-identifier>
 Optional arguments:
 - `<record` record the demo, default is `False`
 - `<webcam>` use webcam as input, default is `False`
+- `cam-id` specify the webcam id, default is `0`
 - `<input-file>` set a video file as input, required if not using webcam
 - `<show-processing>` show the processing of the video, default is `True`
+- `<explanation>` show the explanation of the prediction, default is `False`
+- `<details>` show remarkable details of the face, default is `False`
+- `<info>` show information about the prediction, default is `True`
 
 
 ## Other utilities
