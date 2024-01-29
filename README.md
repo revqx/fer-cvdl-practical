@@ -88,6 +88,6 @@ python main.py initialize_sweep <user_name>
 
 Optional Arguments:
 
-- `<count> number of runs to be performed on the sweep
+- `<count>` number of runs to be performed on the sweep
 - sweep config to be defined in `sweep.py` 
 

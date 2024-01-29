@@ -1,9 +1,11 @@
 import os
 from datetime import datetime
+import json
 
 import typer
 import wandb
 from dotenv import load_dotenv
+from utils import LABEL_TO_STR, label_from_path
 
 from analyze import accuracies, confusion_matrix, analyze_run_and_upload
 from clip_affect_net import clip_affect_net_faces
@@ -25,8 +27,8 @@ DEFAULT_TRAIN_CONFIG = {
     "preprocessing": "StandardizeRGB()",  # everything done on the 64x64 tensors
     # Options: StandardizeGray(), StandardizeRGB()
     "black_and_white": False,  # switches between 1 and 3 channels
-    "validation_split": 0.2,
-    "learning_rate": 0.07,
+    "validation_split": 0.1,
+    "learning_rate": 0.05,
     "sampler": "uniform",  # Options: uniform, None
     "patience": 2,
     "epochs": 7,
@@ -38,17 +40,18 @@ DEFAULT_TRAIN_CONFIG = {
 
 # If you want to use a custom config, change this one as you like
 CUSTOM_TRAIN_CONFIG = {
-    "model_name": "CustomEmotionModel_4",
-    # Options: LeNet, ResNet18, EmotionModel_2, CustomEmotionModel_3, CustomEmotionModel_4
+    "model_name": "CustomEmotionModel_5",
+    # Options: LeNet, ResNet18, EmotionModel_2, CustomEmotionModel_3, CustomEmotionModel_4, CustomEmotionModel_5
     "model_description": "",
     "train_data": "RAF-DB",
     # Options: AffectNet, RAF-DB
     "preprocessing": "",  # everything done on the 64x64 tensors
     # Options: StandardizeGray(), StandardizeRGB()
-    "epochs": 10,
+    "epochs": 15,
     "batch_size": 32,
     "device": "cpu",
     "patience": 2,
+    "weak_class_adjust": False,
 }
 
 # In case you want to create an ensemble model, add the model names/id here
@@ -137,7 +140,7 @@ def ensemble(data_path=os.getenv("DATASET_VALIDATION_PATH")):
 
 
 @app.command()
-def initialize_sweep(entity: str = "your_user_name", count: int = 30):
+def initialize_sweep(entity: str = "your_user_name", count: int = 40):
     project = "cvdl"
     entity = "your_user_name" # system ignores some user names -> input name here
     
@@ -148,6 +151,33 @@ def initialize_sweep(entity: str = "your_user_name", count: int = 30):
 
     sweep_id = wandb.sweep(sweep_config, project=project, entity=entity)
     wandb.agent(sweep_id, function=train_sweep, count=count)
+
+
+@app.command()
+def getActivation(model_name: str, data_path: str = os.getenv("DATASET_VALIDATION_PATH"),
+                     output_path: str = os.getenv("ACTIVATION_VALUES_PATH")):
+    
+    model_id, results = apply_model(model_name, data_path)
+    labels = []
+    activation_values_dict = {}
+
+    for path, *values in results.values:
+        label = label_from_path(path)
+        labels.append(label)
+        if label is None:
+            raise ValueError(f"Could not find label in path {path}.")
+
+        if model_name not in activation_values_dict:
+            activation_values_dict[model_name] = {}
+
+        if label not in activation_values_dict[model_name]:
+            activation_values_dict[model_name][label] = []
+
+        activation_values_dict[model_name][label].append(values)
+
+    # save values locally as a json file (folder path from env file)
+    with open(f'{output_path}\\activation_values.json', 'w') as f:
+        json.dump(activation_values_dict, f)
 
 
 if __name__ == "__main__":

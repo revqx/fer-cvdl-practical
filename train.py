@@ -119,6 +119,13 @@ def train_val_dataloaders(dataset, config):
         class_weights = 1. / class_counts
         weights = class_weights[labels]
 
+        if config["weak_class_adjust"]:
+            # Increase the weight of the fear class
+            fear_class = 2  # the class index should be 2
+            weights[labels == fear_class] *= 1
+            disgust_class = 1
+            weights[labels == disgust_class] *= 1
+
         sampler = WeightedRandomSampler(weights, len(weights))
 
         loader = DataLoader(dataset, batch_size=len(dataset), sampler=sampler)
