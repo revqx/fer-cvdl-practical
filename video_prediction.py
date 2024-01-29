@@ -1,6 +1,7 @@
 import cv2
 import torch
 import numpy as np
+import dlib
 
 from gradcam import overlay
 from inference import load_model_and_preprocessing
@@ -204,10 +205,18 @@ def process_frame(
     show_explanation: bool,
     show_details: bool,
     show_info_box: bool,
+    use_hog: bool,
     ):
     """Process the frame and return the frame with the predicted emotions"""
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     faces = FACE_CASCADE.detectMultiScale(gray, 1.3, 5)
+    
+    if use_hog:
+        hog_detector = dlib.get_frontal_face_detector()
+        dlib_faces = hog_detector(gray)
+        faces = [(d.left(), d.top(), d.right() - d.left(), d.bottom() - d.top()) for d in dlib_faces]
+    else: 
+        faces = FACE_CASCADE.detectMultiScale(gray, 1.3, 5)
 
     if show_info_box:
         cv2.putText(
@@ -258,6 +267,7 @@ def main_loop(
     show_explanation: bool,
     show_details: bool,
     show_info_box: bool,
+    use_hog: bool,
     ):
     """Main loop for video prediction"""
     print("Starting video prediction...")
@@ -276,7 +286,7 @@ def main_loop(
             frame = cv2.flip(frame, 1)
 
         processed_frame = process_frame(
-            frame, model, device, preprocessing, emotion_scores, show_explanation, show_details, show_info_box
+            frame, model, device, preprocessing, emotion_scores, show_explanation, show_details, show_info_box, use_hog
         )
 
         if show_processing:
@@ -312,6 +322,7 @@ def make_video_prediction(
     show_explanation: bool,
     show_details: bool,
     show_info_box: bool,
+    use_hog: bool,
 ):
     """Make video prediction using the model with the given name"""
 
@@ -331,7 +342,8 @@ def make_video_prediction(
             show_processing, 
             show_explanation, 
             show_details, 
-            show_info_box
+            show_info_box,
+            use_hog,
         )
     except Exception as e:
         print(e)

@@ -98,7 +98,7 @@ def analyze(model_name: str, data_path: str = os.getenv("DATASET_VALIDATION_PATH
 
 
 @app.command()
-def demo(model_name: str, record: bool = False, webcam: bool = False, cam_id: int = 0, input_file: str = "", show_processing: bool = True, explanation: bool = False, details: bool = False, info_box: bool = True):
+def demo(model_name: str, record: bool = False, webcam: bool = False, cam_id: int = 0, input_file: str = "", show_processing: bool = True, explanation: bool = False, details: bool = False, info: bool = True, hog: bool = False):
     if not webcam and input_file.strip() == "":
         raise typer.BadParameter("Please specify a video input when not using the camera.")
 
@@ -119,7 +119,7 @@ def demo(model_name: str, record: bool = False, webcam: bool = False, cam_id: in
 
     timestamp = datetime.now().strftime("%Y%m%dT%H%M%S")
     output_file = os.path.join(output_dir, f"{model_name}-{timestamp}.avi")
-    make_video_prediction(model_name, record, webcam, cam_id, input_file, output_file, show_processing, explanation, details, info_box)
+    make_video_prediction(model_name, record, webcam, cam_id, input_file, output_file, show_processing, explanation, details, info, hog)
 
 
 @app.command()

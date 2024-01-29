@@ -59,6 +59,7 @@ Optional arguments:
 - `<explanation>` show the explanation of the prediction, default is `False`
 - `<details>` show remarkable details of the face, default is `False`
 - `<info>` show information about the prediction, default is `True`
+- `<hog>` use HOG instead of haar cascade, not recommended for live demo, default is `False`
 
 
 ## Other utilities
