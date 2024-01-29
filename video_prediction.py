@@ -1,6 +1,7 @@
 import cv2
 import torch
 
+from gradcam import overlay
 from inference import load_model_and_preprocessing
 from utils import LABEL_TO_STR
 
@@ -100,7 +101,10 @@ def process_frame(frame, face_cascade, model, device, preprocessing, emotion_sco
 
         roi = frame[y : y + h, x : x + w]
 
-        predictions = predict_emotions(roi, model, preprocessing, device)
+        # old way of doing stuff
+        # predictions = predict_emotions(roi, model, preprocessing, device)
+        predictions, picture_with_overlay = overlay(roi, model)
+
         emotion, score = top_prediction_with_label(predictions)
 
         emotion_score[emotion]["total_score"] += score
@@ -161,6 +165,12 @@ def process_frame(frame, face_cascade, model, device, preprocessing, emotion_sco
                 WHITE_COLOR,
                 2,
             )
+
+            OVERLAY_SIZE = 128
+            picture_with_overlay = cv2.resize(picture_with_overlay, (OVERLAY_SIZE, OVERLAY_SIZE))
+            frame[- 129 : -1, -129 - face_nr * 129 : -1 - face_nr * 129] = picture_with_overlay
+
+
             for i, (emotion, score) in enumerate(
                 zip(LABEL_TO_STR.values(), predictions[0])
             ):

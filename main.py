@@ -182,9 +182,11 @@ def getActivation(model_name: str, data_path: str = os.getenv("DATASET_VALIDATIO
 
 
 @app.command()
-def explain(model_name: str, data_path: str = os.getenv("DATASET_VALIDATION_PATH"), examples: int = 5, random: bool = True, path_contains: str = ""):
+def explain(model_name: str, data_path: str = os.getenv("DATASET_VALIDATION_PATH"), examples: int = 5,
+            random: bool = True, path_contains: str = "", save_path: str = None):
     model_id, model, preprocessing = load_model_and_preprocessing(model_name)
-    grad_cam(model, data_path, examples=examples, random=random, path_contains=path_contains)
+    grad_cam(model, data_path, examples=examples, random=random, path_contains=path_contains, save_path=save_path)
+
 
 if __name__ == "__main__":
     app()
