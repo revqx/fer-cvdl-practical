@@ -1,6 +1,7 @@
 import os
 from datetime import datetime
 import json
+import cv2
 
 import typer
 import wandb
@@ -101,7 +102,15 @@ def demo(model_name: str, record: bool = False, webcam: bool = False, cam_id: in
     if not webcam and input_file.strip() == "":
         raise typer.BadParameter("Please specify a video input when not using the camera.")
 
-    if webcam and cam_id < 0:
+    num_cameras = 0
+    while True:
+        cap = cv2.VideoCapture(num_cameras)
+        if not cap.read()[0]:
+            break
+        num_cameras += 1
+        cap.release()
+    
+    if webcam and (cam_id >= num_cameras or cam_id < 0):
         raise typer.BadParameter("Please specify a valid camera id")
 
     output_dir = os.getenv("VIDEO_OUTPUT_PATH")

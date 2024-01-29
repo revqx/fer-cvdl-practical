@@ -95,6 +95,105 @@ def predict_emotions(
 
     return predictions
 
+def draw_face_rectangle(
+    frame: np.ndarray,
+    x: int,
+    y: int,
+    w: int,
+    h: int,
+    id: int,
+    emotion: str,
+):
+    cv2.rectangle(frame, (x, y), (x + w, y + h), BLUE_COLOR, 2)
+
+    dynamic_text_size = max(min(h / 300, 1), 0.5)
+    cv2.putText(
+        frame,
+        f"Face #{id + 1}: {emotion}",
+        (x, y - 10),
+        DEFAULT_FONT,
+        dynamic_text_size,
+        BLUE_COLOR,
+        2,
+    )
+
+def draw_mouth_and_eyes(
+    frame: np.ndarray,
+    roi: np.ndarray,
+    x: int,
+    y: int,
+):
+    mouths = MOUTH_CASCADE.detectMultiScale(roi, 1.6, 20)
+
+    if len(mouths) > 0:
+        (mx, my, mw, mh) = mouths[0]
+        cv2.ellipse(
+            roi,
+            (mx + mw // 2, my + mh // 2),
+            (mw // 2, mh // 2),
+            0,
+            0,
+            360,
+            RED_COLOR,
+            2,
+        )
+
+    eyes = EYE_CASCADE.detectMultiScale(roi, 1.8, 10)
+    for x2, y2, w2, h2 in eyes[:2]:
+        eye_center = (x + x2 + w2 // 2, y + y2 + h2 // 2)
+        radius = int(round((w2 + h2) * 0.25))
+        cv2.circle(frame, eye_center, radius, RED_COLOR, 4)
+
+def draw_explanation_overlay(
+    frame: np.ndarray,
+    id: int,
+    picture_with_overlay: np.ndarray,
+):
+    OVERLAY_SIZE = 128
+    picture_with_overlay = cv2.resize(picture_with_overlay, (OVERLAY_SIZE, OVERLAY_SIZE))
+    cv2.putText(
+        frame,
+        f"Face #{id + 1}",
+        (frame.shape[1] - 129 - id * 128 + 10, frame.shape[0] - 138),
+        DEFAULT_FONT,
+        0.5,
+        BLUE_COLOR,
+        2,
+    )
+    frame[-129 : -1, -129 - id * 129 : -1 - id * 129] = picture_with_overlay
+
+
+def draw_info_box(
+    frame: np.ndarray,
+    id: int,
+    predictions: torch.Tensor,
+):
+    """Draw the info box with the predictions"""
+    offset = id * 150 + 60
+    cv2.rectangle(frame, (10, offset), (220, offset + 150), WHITE_COLOR, 2)
+    cv2.putText(
+        frame,
+        f"Face #{id + 1}",
+        (15, offset + 20),
+        DEFAULT_FONT,
+        INFO_TEXT_SIZE,
+        WHITE_COLOR,
+        2,
+    )
+
+    for i, (emotion, score) in enumerate(
+        zip(LABEL_TO_STR.values(), predictions[0])
+    ):
+        cv2.putText(
+            frame,
+            f"{emotion}: {score:.2f}",
+            (15, offset + 40 + i * 20),
+            DEFAULT_FONT,
+            INFO_TEXT_SIZE,
+            WHITE_COLOR,
+            2,
+        )
+
 
 def process_frame(
     frame: np.ndarray, 
@@ -110,20 +209,18 @@ def process_frame(
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     faces = FACE_CASCADE.detectMultiScale(gray, 1.3, 5)
 
-    cv2.putText(
-        frame,
-        f"Number of faces detected: {len(faces)}",
-        (10, 30),
-        DEFAULT_FONT,
-        1.1,
-        WHITE_COLOR,
-        2,
-    )
+    if show_info_box:
+        cv2.putText(
+            frame,
+            f"Number of faces detected: {len(faces)}",
+            (10, 30),
+            DEFAULT_FONT,
+            1.1,
+            WHITE_COLOR,
+            2,
+        )
 
-    offset = 60
-    for face_nr, (x, y, w, h) in enumerate(faces):
-        id = face_nr + 1
-
+    for face_id, (x, y, w, h) in enumerate(faces):
         roi = frame[y : y + h, x : x + w]
 
         if show_explanation:
@@ -137,81 +234,17 @@ def process_frame(
         emotion_score[emotion]["total_score"] += score
         emotion_score[emotion]["count"] += 1
 
-        cv2.rectangle(frame, (x, y), (x + w, y + h), BLUE_COLOR, 2)
-
-        dynamic_text_size = max(min(h / 300, 1), 0.5)
-        cv2.putText(
-            frame,
-            f"Face #{id}: {emotion}",
-            (x, y - 10),
-            DEFAULT_FONT,
-            dynamic_text_size,
-            BLUE_COLOR,
-            2,
-        )
+        draw_face_rectangle(frame, x, y, w, h, face_id, emotion)
 
         if show_details:
-            mouths = MOUTH_CASCADE.detectMultiScale(roi, 1.6, 20)
-
-            if len(mouths) > 0:
-                (mx, my, mw, mh) = mouths[0]
-                cv2.ellipse(
-                    roi,
-                    (mx + mw // 2, my + mh // 2),
-                    (mw // 2, mh // 2),
-                    0,
-                    0,
-                    360,
-                    RED_COLOR,
-                    2,
-                )
-
-            eyes = EYE_CASCADE.detectMultiScale(roi, 1.8, 10)
-            for x2, y2, w2, h2 in eyes[:2]:
-                eye_center = (x + x2 + w2 // 2, y + y2 + h2 // 2)
-                radius = int(round((w2 + h2) * 0.25))
-                cv2.circle(frame, eye_center, radius, RED_COLOR, 4)
+            draw_mouth_and_eyes(frame, roi, x, y)
                 
         if show_explanation:
-            OVERLAY_SIZE = 128
-            picture_with_overlay = cv2.resize(picture_with_overlay, (OVERLAY_SIZE, OVERLAY_SIZE))
-            cv2.putText(
-                frame,
-                f"Face #{id}",
-                (frame.shape[1] - 129 - face_nr * 128 + 10, frame.shape[0] - 138),
-                DEFAULT_FONT,
-                0.5,
-                BLUE_COLOR,
-                2,
-            )
-            frame[- 129 : -1, -129 - face_nr * 129 : -1 - face_nr * 129] = picture_with_overlay
+            draw_explanation_overlay(frame, face_id, picture_with_overlay)
 
         if show_info_box:
-            cv2.rectangle(frame, (10, offset), (220, offset + 150), WHITE_COLOR, 2)
-            cv2.putText(
-                frame,
-                f"Face #{id}",
-                (15, offset + 20),
-                DEFAULT_FONT,
-                INFO_TEXT_SIZE,
-                WHITE_COLOR,
-                2,
-            )
-
-            for i, (emotion, score) in enumerate(
-                zip(LABEL_TO_STR.values(), predictions[0])
-            ):
-                cv2.putText(
-                    frame,
-                    f"{emotion}: {score:.2f}",
-                    (15, offset + 40 + i * 20),
-                    DEFAULT_FONT,
-                    INFO_TEXT_SIZE,
-                    WHITE_COLOR,
-                    2,
-                )
-
-        offset += 150
+            draw_info_box(frame, face_id, predictions)
+            
     return frame
 
 
