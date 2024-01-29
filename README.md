@@ -10,8 +10,6 @@ pip install -r requirements.txt
 
 2. Put the affectnet dataset into `./data/affectnet`, the fer2013 dataset into `./data/fer2013`, and the rafdb dataset into `./data/raf_db`. The given validation set should be put into `./data/test`. You can also change the paths in `.env` to your liking.
 
-3. If you want to use the face detection, download the haar cascade from [here](https://github.com/opencv/opencv/blob/4.x/data/haarcascades/haarcascade_frontalface_default.xml) and put it into the `/cascades` folder.
-
 ## Train
 
 ```bash
