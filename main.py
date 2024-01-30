@@ -21,21 +21,21 @@ app = typer.Typer()
 # Default config for training should not be altered by the user
 # See custom config below for options
 CURRENT_BEST_TRAIN_CONFIG = {
-    "model_name": "CustomEmotionModel_3",
+    "model_name": "ResNet50",
     "model_description": "",
     "train_data": "RAF-DB",
     "preprocessing": "",
-    "augmentations": "HorizontalFlip, RandomCrop, RandomRotation",
-    "validation_split": 0.1,
-    "learning_rate": 0.07,
+    "augmentations": "HorizontalFlip, RandomRotation, RandomCrop, TrivialAugmentWide, TrivialAugmentWide, TrivialAugmentWid",
+    "validation_split": 0.2,
+    "learning_rate": 0.001,
     "sampler": "uniform",
     "ReduceLR_factor": 0.1,
-    "patience": 2,
-    "epochs": 15,
+    "patience": 5,
+    "epochs": 30,
     "batch_size": 32,
     "loss_function": "CrossEntropyLoss",
     "weak_class_adjust": False,
-    "optimizer": "SGD",
+    "optimizer": "Adam",
     "device": "cpu"
 }
 
