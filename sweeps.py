@@ -188,8 +188,6 @@ def get_sweep_loader(config):
     # has to be turned back into a dataset to use train_test_split
     uniform_dataset, uniform_labels = next(iter(loader))
 
-    # wir müssen wissen wie viele bilder wir benutzen dürfen in abh von unserem split, weil im im train set vier mal so viele drin sind
-    # 0.8 = Anzahl der Augmentations * x / Anzahl der Trainingssamples
     train_data, val_data, train_labels, val_labels = train_test_split(uniform_dataset, uniform_labels, test_size=config["validation_split"], stratify=uniform_labels)
 
     train_loader = DataLoader(list(zip(train_data, train_labels)), batch_size=config["batch_size"])

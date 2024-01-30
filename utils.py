@@ -42,7 +42,8 @@ AVAILABLE_PREPROCESSINGS = {
 AVAILABLE_AUGMENTATIONS = {
     "HorizontalFlip": v2.RandomHorizontalFlip(p=1),  # Always apply horizontal flip
     "RandomRotation": v2.RandomRotation(degrees=(-10, 10)),
-    "RandomScale": v2.RandomAffine(degrees=0, translate=(0, 0), scale=(1.0, 1.3), shear=0)
+    "RandomCrop": v2.RandomAffine(degrees=0, translate=(0, 0), scale=(1.0, 1.3), shear=0),
+    "TrivialAugmentWide": v2.TrivialAugmentWide()
 }
 
 # laod images from list of paths

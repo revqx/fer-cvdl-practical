@@ -32,7 +32,6 @@ def train_model(config: dict):
     train_loader, val_loader = train_val_dataloaders(dataset, preprocessing, augmentations,
                                                      config["validation_split"], config["batch_size"],
                                                      config["sampler"], config["weak_class_adjust"])
-    print(f"train data: {len(train_loader.dataset)}, val data: {len(val_loader.dataset)}")
 
     # Model selection
     model = get_model(config["model_name"])
@@ -99,7 +98,7 @@ def training_loop(model, train_loader, val_loader, criterion, optimizer, schedul
 
             # Calculate and store metrics
             epoch_loss = running_loss / len(data_loader.dataset)
-            epoch_acc = running_corrects.double() / len(data_loader.dataset)
+            epoch_acc = float(running_corrects) / len(data_loader.dataset)
             metrics[f'{phase}_loss'] = epoch_loss
             metrics[f'{phase}_acc'] = epoch_acc
 

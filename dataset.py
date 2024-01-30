@@ -89,7 +89,6 @@ class RafDb(Dataset):
         return img_path, label
 
 
-
 class DatasetWrapper(Dataset):
     def __init__(self, img_paths, labels, preprocessing=None, augmentations=[]):
         self.img_paths = img_paths

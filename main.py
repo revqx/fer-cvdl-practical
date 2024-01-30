@@ -19,41 +19,46 @@ load_dotenv()
 app = typer.Typer()
 
 # Default config for training should not be altered by the user
-DEFAULT_TRAIN_CONFIG = {
-    "model_name": "LeNet",
-    # Options: LeNet, ResNet18, EmotionModel
+# See custom config below for options
+CURRENT_BEST_TRAIN_CONFIG = {
+    "model_name": "CustomEmotionModel_3",
     "model_description": "",
-    "train_data": "AffectNet",  # Options: AffectNet, RAF_DB
-    "preprocessing": "StandardizeRGB()",  # everything done on the 64x64 tensors
-    # Options: StandardizeGray(), StandardizeRGB()
-    "augmentations": "HorizontalFlip, RandomScale, RandomRotation",
-    # Options: "HorizontalFlip", "RandomRotation", "RandomScale"
+    "train_data": "RAF-DB",
+    "preprocessing": "",
+    "augmentations": "HorizontalFlip, RandomCrop, RandomRotation",
     "validation_split": 0.1,
     "learning_rate": 0.07,
-    "sampler": "uniform",  # Options: uniform, None
-    "patience": 2,
+    "sampler": "uniform",
     "ReduceLR_factor": 0.1,
-    "epochs": 7,
-    "batch_size": 64,
+    "patience": 2,
+    "epochs": 15,
+    "batch_size": 32,
     "loss_function": "CrossEntropyLoss",
-    "optimizer": "SGD",  # Options: Adam, SGD
-    "device": "cpu",
+    "weak_class_adjust": False,
+    "optimizer": "SGD",
+    "device": "cpu"
 }
 
 # If you want to use a custom config, change this one as you like
 CUSTOM_TRAIN_CONFIG = {
-    "model_name": "CustomEmotionModel_3",
-    # Options: LeNet, ResNet18, EmotionModel_2, CustomEmotionModel_3, CustomEmotionModel_4, CustomEmotionModel_5
+    "model_name": "ResNet50",
+    # Options: LeNet, ResNet_{18, 50}, EmotionModel_2, CustomEmotionModel_{3, 4, 5}, MobileNetV2
     "model_description": "",
-    "train_data": "RAF-DB",
-    # Options: AffectNet, RAF-DB
-    "preprocessing": "",  # everything done on the 64x64 tensors
-    # Options: ImageNetNormalization()
-    "epochs": 15,
+    "train_data": "RAF-DB",  # Options: AffectNet, RAF-DB
+    "preprocessing": "ImageNetNormalization",  # Options: ImageNetNormalization
+    "augmentations": "HorizontalFlip, RandomRotation, RandomCrop, TrivialAugmentWide, TrivialAugmentWide, TrivialAugmentWide, TrivialAugmentWide",
+    # Options: "HorizontalFlip", "RandomRotation", "RandomCrop", "TrivialAugmentWide"
+    "validation_split": 0.1,
+    "learning_rate": 0.001,
+    "sampler": "uniform",  # Options: uniform, None
+    "ReduceLR_factor": 0.1,
+    "patience": 5,
+    "epochs": 50,
     "batch_size": 32,
-    "device": "cpu",
-    "patience": 2,
+    "loss_function": "CrossEntropyLoss",  # Options: CrossEntropyLoss
     "weak_class_adjust": False,
+    "optimizer": "Adam",  # Options: Adam, SGD
+    "device": "mps"  # Options: cuda, cpu, mps
 }
 
 # In case you want to create an ensemble model, add the model names/id here
@@ -63,7 +68,7 @@ ENSEMBLE_MODELS = ["h8txabjg", "odyx0ott", "8uu89woq"]
 @app.command()
 def train(offline: bool = False):
     # merge default and custom config
-    config = DEFAULT_TRAIN_CONFIG | CUSTOM_TRAIN_CONFIG
+    config = CURRENT_BEST_TRAIN_CONFIG | CUSTOM_TRAIN_CONFIG
     # check if valiadation path is valid
     if not os.path.exists(os.getenv("DATASET_TEST_PATH")):
         raise FileNotFoundError(f"Directory {os.getenv('DATASET_TEST_PATH')} not found. "
