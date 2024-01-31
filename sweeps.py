@@ -1,21 +1,20 @@
-import numpy as np  
-import torch  
-import torch.nn.functional as F  
-from sklearn.model_selection import train_test_split  
+import numpy as np
+import torch
+import torch.nn.functional as F
+from sklearn.model_selection import train_test_split
 
-import torch.nn as nn  
+import torch.nn as nn
 import wandb
-from torch.utils.data import DataLoader, WeightedRandomSampler  
+from torch.utils.data import DataLoader, WeightedRandomSampler
 
-from dataset import get_dataset  
-from model import get_model, _create_conv_block, _create_conv_block_2  
-from model import get_model  
-from preprocessing import select_preprocessing 
+from dataset import get_dataset
+from model import get_model, _create_conv_block, _create_conv_block_2
+from model import get_model
+from preprocessing import select_preprocessing
 
 
 def get_sweep_config(metric="val_loss", goal="minimize", method="random",
                      custom_model=True, early_terminate=None):
-      
     sweep_config = {
         "method": method  # to be specified by user
     }
@@ -29,7 +28,7 @@ def get_sweep_config(metric="val_loss", goal="minimize", method="random",
     # parameters to sweep over (dropout not possible atm because models need custom input for dropout)
     parameters_dict = {
         "optimizer": {
-        "values": ['sgd']  # options: adam, sgd
+            "values": ['sgd']  # options: adam, sgd
         },
         "dataset": {
             "values": ["RAF-DB"]  # options: AffectNet, RAF-DB
@@ -38,7 +37,7 @@ def get_sweep_config(metric="val_loss", goal="minimize", method="random",
             "values": [16, 24, 32]  # defined here since log distribution causes bad comparability
         },
         "validation_split": {
-            "values": [0.1, 0.2] # once sweeped to be set as constant
+            "values": [0.1, 0.2]  # once sweeped to be set as constant
         },
         "weak_class_adjust": {
             "values": [1]  # can be set to True and weights have to be adjusted in get_sweep_loader
@@ -59,9 +58,9 @@ def get_sweep_config(metric="val_loss", goal="minimize", method="random",
         sweep_config["parameters"] = parameters_dict
     else:
         parameters_dict.update({
-        "model_name": {
-            "values": ["model_name"]
-        }  # options: EmotionModel_2, CustomEmotionModel_3, LeNet, ResNet18
+            "model_name": {
+                "values": ["model_name"]
+            }  # options: EmotionModel_2, CustomEmotionModel_3, LeNet, ResNet18
         })
         sweep_config["parameters"] = parameters_dict
 
@@ -120,7 +119,7 @@ def train_sweep(custom_model=True):
 
 
 def train_epoch(model, loader, optimizer, device):
-    model.train()  
+    model.train()
     cumu_loss = 0
     for _, (data, target) in enumerate(loader):
         data, target = data.to(device), target.to(device)
@@ -128,7 +127,7 @@ def train_epoch(model, loader, optimizer, device):
 
         # ➡ Forward pass
         output = model(data)
-        log_output = F.log_softmax(output, dim=1) 
+        log_output = F.log_softmax(output, dim=1)
         loss = F.nll_loss(log_output, target)  # loss calculation interchangeable
         cumu_loss += loss.item()
 
@@ -142,15 +141,15 @@ def train_epoch(model, loader, optimizer, device):
 
 
 def validate(model, loader, device):
-    model.eval() 
+    model.eval()
     cumu_loss = 0
-    with torch.no_grad(): 
+    with torch.no_grad():
         for _, (data, target) in enumerate(loader):
             data, target = data.to(device), target.to(device)
 
             output = model(data)
             log_output = F.log_softmax(output, dim=1)
-            loss = F.nll_loss(log_output, target)  
+            loss = F.nll_loss(log_output, target)
             cumu_loss += loss.item()
 
     return cumu_loss / len(loader)
@@ -188,7 +187,9 @@ def get_sweep_loader(config):
     # has to be turned back into a dataset to use train_test_split
     uniform_dataset, uniform_labels = next(iter(loader))
 
-    train_data, val_data, train_labels, val_labels = train_test_split(uniform_dataset, uniform_labels, test_size=config["validation_split"], stratify=uniform_labels)
+    train_data, val_data, train_labels, val_labels = train_test_split(uniform_dataset, uniform_labels,
+                                                                      test_size=config["validation_split"],
+                                                                      stratify=uniform_labels)
 
     train_loader = DataLoader(list(zip(train_data, train_labels)), batch_size=config["batch_size"])
     val_loader = DataLoader(list(zip(val_data, val_labels)), batch_size=config["batch_size"], shuffle=False)
@@ -216,10 +217,10 @@ class DynamicModel(nn.Module):
 
             # dynamic number of hidden layers
             for _ in range(hidden_layers - 1):
-                self.hidden_layers.append(nn.Linear(256 // 2**_, 256 // 2**(_ + 1)))
+                self.hidden_layers.append(nn.Linear(256 // 2 ** _, 256 // 2 ** (_ + 1)))
 
             # define output layer depending on number of hidden layers
-            self.output = nn.Linear(256 // 2**(hidden_layers - 1), num_classes)
+            self.output = nn.Linear(256 // 2 ** (hidden_layers - 1), num_classes)
 
             self.dropout = nn.Dropout(dropout)
 
@@ -242,9 +243,8 @@ class DynamicModel(nn.Module):
         x = self.output(x)
 
         return x
-    
+
 
 def get_dynamic_model(config):
     model = DynamicModel(config["layer_count"], config["dropout"])
     return model
-    

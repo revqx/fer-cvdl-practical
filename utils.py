@@ -46,7 +46,8 @@ AVAILABLE_AUGMENTATIONS = {
     "TrivialAugmentWide": v2.TrivialAugmentWide()
 }
 
-# laod images from list of paths
+
+# load images from list of paths
 def load_images(paths: list[str]) -> list[tuple[str, torch.Tensor]]:
     """
     Load all images from the given paths.

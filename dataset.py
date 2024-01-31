@@ -3,9 +3,7 @@ import pandas as pd
 import torch
 from PIL import Image
 from torch.utils.data import Dataset
-from torchvision.transforms import v2
 
-from augment import select_augmentations
 from utils import LABEL_TO_NUM, load_images, label_from_path, transform
 
 
@@ -65,7 +63,6 @@ class Fer2013(Dataset):
 class RafDb(Dataset):
     def __init__(self):
         root_dir = os.getenv('DATASET_RAF_DB_PATH')
-
         if not os.path.exists(root_dir):
             raise FileNotFoundError(f"Directory {root_dir} not found. Could not load RAF-DB dataset.")
 
@@ -122,7 +119,3 @@ class DatasetWrapper(Dataset):
             image = self.augmentations[(idx % self.augmentation_factor) - 1](image)
 
         return image, label
-
-
-
-

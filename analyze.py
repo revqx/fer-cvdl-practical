@@ -62,4 +62,3 @@ def analyze_run_and_upload(model_name: str):
                                                    title="Confusion Matrix")
     wandb.log({"confusion_matrix": conf_matrix_plot})
     print(f"Finished analysis of model {model_id}.")
-

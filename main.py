@@ -104,11 +104,12 @@ def analyze(model_name: str, data_path: str = os.getenv("DATASET_TEST_PATH")):
 
 
 @app.command()
-def demo(model_name: str, record: bool = False, webcam: bool = False, input_file: str = "", show_processing: bool = True):
+def demo(model_name: str, record: bool = False, webcam: bool = False, input_file: str = "",
+         show_processing: bool = True):
     if not webcam and not input_file:
         raise typer.BadParameter("Please specify a video input when not using the camera.")
-    
-    output_dir = os.getenv("VIDEO_OUTPUT_PATH") 
+
+    output_dir = os.getenv("VIDEO_OUTPUT_PATH")
     if not os.path.exists(output_dir) and record:
         os.makedirs(output_dir, exist_ok=True)
 
@@ -150,8 +151,8 @@ def ensemble(data_path=os.getenv("DATASET_TEST_PATH")):
 @app.command()
 def initialize_sweep(entity: str = "your_user_name", count: int = 40):
     project = "cvdl"
-    entity = "your_user_name" # system ignores some user names -> input name here
-    
+    entity = "your_user_name"  # system ignores some user names -> input name here
+
     if entity == "your_user_name":
         raise ValueError("Please enter your user name.")
 
@@ -163,8 +164,7 @@ def initialize_sweep(entity: str = "your_user_name", count: int = 40):
 
 @app.command()
 def getActivation(model_name: str, data_path: str = os.getenv("DATASET_TEST_PATH"),
-                     output_path: str = os.getenv("ACTIVATION_VALUES_PATH")):
-    
+                  output_path: str = os.getenv("ACTIVATION_VALUES_PATH")):
     model_id, results = apply_model(model_name, data_path)
     labels = []
     activation_values_dict = {}
