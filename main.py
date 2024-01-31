@@ -25,7 +25,7 @@ CURRENT_BEST_TRAIN_CONFIG = {
     "model_description": "",
     "train_data": "RAF-DB",
     "preprocessing": "",
-    "augmentations": "HorizontalFlip, RandomRotation, RandomCrop, TrivialAugmentWide, TrivialAugmentWide, TrivialAugmentWid",
+    "augmentations": "HorizontalFlip, RandomRotation, RandomCrop, TrivialAugmentWide, TrivialAugmentWide, TrivialAugmentWide",
     "validation_split": 0.2,
     "learning_rate": 0.001,
     "sampler": "uniform",
@@ -44,9 +44,9 @@ CUSTOM_TRAIN_CONFIG = {
     "model_name": "ResNet50",
     # Options: LeNet, ResNet_{18, 50}, EmotionModel_2, CustomEmotionModel_{3, 4, 5}, MobileNetV2
     "model_description": "",
-    "train_data": "RAF-DB",  # Options: AffectNet, RAF-DB
+    "train_data": "AffectNet",  # Options: AffectNet, RAF-DB
     "preprocessing": "ImageNetNormalization",  # Options: ImageNetNormalization
-    "augmentations": "HorizontalFlip, RandomRotation, RandomCrop, TrivialAugmentWide, TrivialAugmentWide, TrivialAugmentWide, TrivialAugmentWide",
+    "augmentations": "HorizontalFlip, RandomRotation, RandomCrop, TrivialAugmentWide, TrivialAugmentWide, TrivialAugmentWide",
     # Options: "HorizontalFlip", "RandomRotation", "RandomCrop", "TrivialAugmentWide"
     "validation_split": 0.1,
     "learning_rate": 0.001,
