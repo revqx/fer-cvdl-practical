@@ -209,7 +209,6 @@ def process_frame(
     ):
     """Process the frame and return the frame with the predicted emotions"""
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    faces = FACE_CASCADE.detectMultiScale(gray, 1.3, 5)
     
     if use_hog:
         hog_detector = dlib.get_frontal_face_detector()
@@ -217,7 +216,7 @@ def process_frame(
         faces = [(d.left(), d.top(), d.right() - d.left(), d.bottom() - d.top()) for d in dlib_faces]
     else: 
         faces = FACE_CASCADE.detectMultiScale(gray, 1.3, 5)
-
+        
     if show_info_box:
         cv2.putText(
             frame,
@@ -313,7 +312,7 @@ def main_loop(
 
 def make_video_prediction(
     model_name: str,
-    record: bool,
+    save: bool,
     webcam: bool,
     cam_id: int,
     video_input: str,
@@ -329,7 +328,7 @@ def make_video_prediction(
     model, preprocessing, device = initialize_model(model_name)
     cap = initialize_cap(webcam, cam_id, video_input)
 
-    if record:
+    if save:
         out = initialize_out(cap, output_file)
 
     try:
@@ -349,7 +348,7 @@ def make_video_prediction(
         print(e)
     finally:
         cap.release()
-        if record:
+        if save:
             out.release()
             print(f"Video successfully saved as {output_file}")
         cv2.destroyAllWindows()

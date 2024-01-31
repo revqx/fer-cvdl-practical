@@ -98,28 +98,24 @@ def analyze(model_name: str, data_path: str = os.getenv("DATASET_VALIDATION_PATH
 
 
 @app.command()
-def demo(model_name: str, record: bool = False, webcam: bool = False, cam_id: int = 0, input_file: str = "", show_processing: bool = True, explanation: bool = False, details: bool = False, info: bool = True, hog: bool = False):
+def demo(model_name: str, save: bool = False, webcam: bool = False, cam_id: int = 0, input_file: str = "", show_processing: bool = True, explanation: bool = False, details: bool = False, info: bool = True, hog: bool = False):
     if not webcam and input_file.strip() == "":
         raise typer.BadParameter("Please specify a video input when not using the camera.")
 
-    num_cameras = 0
-    while True:
-        cap = cv2.VideoCapture(num_cameras)
-        if not cap.read()[0]:
-            break
-        num_cameras += 1
+    if webcam: 
+        cap = cv2.VideoCapture(cam_id)
+        is_valid = cap.isOpened()
         cap.release()
-    
-    if webcam and (cam_id >= num_cameras or cam_id < 0):
-        raise typer.BadParameter("Please specify a valid camera id")
+        if not is_valid:
+            raise typer.BadParameter("Please specify a valid camera id")
 
     output_dir = os.getenv("VIDEO_OUTPUT_PATH")
-    if not os.path.exists(output_dir) and record:
+    if not os.path.exists(output_dir) and save:
         os.makedirs(output_dir, exist_ok=True)
 
     timestamp = datetime.now().strftime("%Y%m%dT%H%M%S")
     output_file = os.path.join(output_dir, f"{model_name}-{timestamp}.avi")
-    make_video_prediction(model_name, record, webcam, cam_id, input_file, output_file, show_processing, explanation, details, info, hog)
+    make_video_prediction(model_name, save, webcam, cam_id, input_file, output_file, show_processing, explanation, details, info, hog)
 
 
 @app.command()
