@@ -48,9 +48,9 @@ def initialize_cap(webcam: bool, cam_id: int, video_input: str):
 
 
 def initialize_out(
-    cap: cv2.VideoCapture, 
-    file: str, 
-    codec: str = "MJPG"
+    cap: cv2.VideoCapture,
+    file: str,
+    codec: str = "XVID"
     ):
     """Initialize the video output"""
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH) + 0.5)
@@ -71,9 +71,9 @@ def top_prediction_with_label(predictions: torch.Tensor):
 
 
 def predict_emotions(
-    image: np.ndarray, 
-    model: torch.nn.Module, 
-    preprocessing: torch.nn.Module, 
+    image: np.ndarray,
+    model: torch.nn.Module,
+    preprocessing: torch.nn.Module,
     device: str,
     ):
     """Predict the emotions of the given image"""
@@ -197,10 +197,10 @@ def draw_info_box(
 
 
 def process_frame(
-    frame: np.ndarray, 
-    model: torch.nn.Module, 
-    device: str, 
-    preprocessing: str, 
+    frame: np.ndarray,
+    model: torch.nn.Module,
+    device: str,
+    preprocessing: str,
     emotion_score: dict,
     show_explanation: bool,
     show_details: bool,
@@ -209,14 +209,14 @@ def process_frame(
     ):
     """Process the frame and return the frame with the predicted emotions"""
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    
+
     if use_hog:
         hog_detector = dlib.get_frontal_face_detector()
         dlib_faces = hog_detector(gray)
         faces = [(d.left(), d.top(), d.right() - d.left(), d.bottom() - d.top()) for d in dlib_faces]
-    else: 
+    else:
         faces = FACE_CASCADE.detectMultiScale(gray, 1.3, 5)
-        
+
     if show_info_box:
         cv2.putText(
             frame,
@@ -246,27 +246,29 @@ def process_frame(
 
         if show_details:
             draw_mouth_and_eyes(frame, roi, x, y)
-                
+
         if show_explanation:
             draw_explanation_overlay(frame, face_id, picture_with_overlay)
 
         if show_info_box:
             draw_info_box(frame, face_id, predictions)
-            
+
     return frame
 
 
 def main_loop(
-    cap: cv2.VideoCapture, 
-    model: torch.nn.Module, 
-    device: str, 
+    cap: cv2.VideoCapture,
+    model: torch.nn.Module,
+    device: str,
     preprocessing: str,
     webcam: bool,
-    show_processing: bool, 
+    show_processing: bool,
     show_explanation: bool,
     show_details: bool,
     show_info_box: bool,
     use_hog: bool,
+    out: cv2.VideoWriter,
+    save: bool = False,
     ):
     """Main loop for video prediction"""
     print("Starting video prediction...")
@@ -290,6 +292,15 @@ def main_loop(
 
         if show_processing:
             cv2.imshow("Facial Emotion Recognition", processed_frame)
+
+        if save:
+            out.write(processed_frame)
+
+            if not webcam:
+                fps = int(cap.get(cv2.CAP_PROP_FPS))
+                current_frame = int(cap.get(cv2.CAP_PROP_POS_FRAMES))
+                if current_frame % fps == 0:
+                    print(f"Processed {current_frame} / {int(cap.get(cv2.CAP_PROP_FRAME_COUNT))}")
 
         q_pressed = cv2.waitKey(1) == ord("q")
         window_closed = (
@@ -333,16 +344,18 @@ def make_video_prediction(
 
     try:
         main_loop(
-            cap, 
-            model, 
-            device, 
-            preprocessing, 
-            webcam, 
-            show_processing, 
-            show_explanation, 
-            show_details, 
+            cap,
+            model,
+            device,
+            preprocessing,
+            webcam,
+            show_processing,
+            show_explanation,
+            show_details,
             show_info_box,
             use_hog,
+            out,
+            save,
         )
     except Exception as e:
         print(e)
@@ -352,5 +365,3 @@ def make_video_prediction(
             out.release()
             print(f"Video successfully saved as {output_file}")
         cv2.destroyAllWindows()
-
-
