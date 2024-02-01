@@ -6,7 +6,9 @@ import cv2
 import typer
 import wandb
 from dotenv import load_dotenv
-from utils import LABEL_TO_STR, label_from_path
+
+from explain import pca_graph
+from utils import label_from_path
 
 from gradcam import grad_cam
 from analyze import accuracies, confusion_matrix, analyze_run_and_upload
@@ -194,6 +196,12 @@ def explain(model_name: str, data_path: str = os.getenv("DATASET_VALIDATION_PATH
             random: bool = True, path_contains: str = "", save_path: str = None):
     model_id, model, preprocessing = load_model_and_preprocessing(model_name)
     grad_cam(model, data_path, examples=examples, random=random, path_contains=path_contains, save_path=save_path)
+
+
+@app.command()
+def pca(model_name: str, data_path: str = os.getenv("DATASET_VALIDATION_PATH")):
+    model_id, results = apply_model(model_name, data_path)
+    pca_graph(results)
 
 
 if __name__ == "__main__":
