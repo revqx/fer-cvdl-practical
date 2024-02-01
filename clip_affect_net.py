@@ -12,7 +12,7 @@ def clip_face(img):
     was_clipped = False
     if len(faces) > 0:
         x, y, w, h = faces[0]
-        img = img[y:y+h, x:x+w]
+        img = img[y:y + h, x:x + w]
         was_clipped = True
     return cv2.resize(img, (64, 64)), was_clipped
 

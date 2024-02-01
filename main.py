@@ -1,11 +1,10 @@
+import json
 import os
 from datetime import datetime
-import json
 
 import typer
 import wandb
 from dotenv import load_dotenv
-from utils import LABEL_TO_STR, label_from_path
 
 from analyze import accuracies, confusion_matrix, analyze_run_and_upload
 from clip_affect_net import clip_affect_net_faces
@@ -13,45 +12,59 @@ from ensemble import ensemble_results
 from inference import apply_model
 from sweeps import get_sweep_config, train_sweep
 from train import train_model
+from utils import label_from_path
 from video_prediction import make_video_prediction
 
 load_dotenv()
 app = typer.Typer()
 
 # Default config for training should not be altered by the user
-DEFAULT_TRAIN_CONFIG = {
-    "model_name": "LeNet",
-    # Options: LeNet, ResNet18
+# See custom config below for options
+CURRENT_BEST_TRAIN_CONFIG = {
+    "model_name": "CustomEmotionModel3",
+    # Options: LeNet, ResNet_{18, 50}, EmotionModel_2, CustomEmotionModel{3, 4, 5}, MobileNetV2
     "model_description": "",
-    "train_data": "AffectNet",  # Options: AffectNet, RAF_DB
-    "preprocessing": "StandardizeRGB()",  # everything done on the 64x64 tensors
-    # Options: StandardizeGray(), StandardizeRGB()
-    "black_and_white": False,  # switches between 1 and 3 channels
+    "train_data": "RAF-DB",  # Options: AffectNet, RAF-DB
+    "preprocessing": "ImageNetNormalization",  # Options: ImageNetNormalization
+    "augmentations": "HorizontalFlip, RandomRotation, RandomCrop, TrivialAugmentWide, TrivialAugmentWide",
+    # Options: "HorizontalFlip", "RandomRotation", "RandomCrop", "TrivialAugmentWide", "RandAugment"
     "validation_split": 0.1,
-    "learning_rate": 0.05,
+    "learning_rate": 0.001,
+    "epochs": 20,
+    "batch_size": 32,
     "sampler": "uniform",  # Options: uniform, None
-    "patience": 2,
-    "epochs": 7,
-    "batch_size": 64,
-    "loss_function": "CrossEntropyLoss",
-    "optimizer": "SGD",  # Options: Adam, SGD
-    "device": "cpu",
+    "scheduler": "ReduceLROnPlateau",
+    "ReduceLROnPlateau_factor": 0.1,
+    "ReduceLROnPlateau_patience": 5,
+    "InverseTimeDecay_decay_rate": 0.001,
+    "loss_function": "CrossEntropyLoss",  # Options: CrossEntropyLoss
+    "class_weight_adjustments": [1, 1, 1, 1, 1, 1],
+    "optimizer": "Adam",  # Options: Adam, SGD
+    "device": "mps"  # Options: cuda, cpu, mps
 }
 
 # If you want to use a custom config, change this one as you like
 CUSTOM_TRAIN_CONFIG = {
-    "model_name": "CustomEmotionModel_5",
-    # Options: LeNet, ResNet18, EmotionModel_2, CustomEmotionModel_3, CustomEmotionModel_4, CustomEmotionModel_5
+    "model_name": "CustomEmotionModel3",
+    # Options: LeNet, ResNet_{18, 50}, EmotionModel_2, CustomEmotionModel{3, 4, 5}, MobileNetV2
     "model_description": "",
-    "train_data": "RAF-DB",
-    # Options: AffectNet, RAF-DB
-    "preprocessing": "",  # everything done on the 64x64 tensors
-    # Options: StandardizeGray(), StandardizeRGB()
-    "epochs": 15,
-    "batch_size": 32,
-    "device": "cpu",
-    "patience": 2,
-    "weak_class_adjust": False,
+    "train_data": "RAF-DB",  # Options: AffectNet, RAF-DB
+    "preprocessing": "ImageNetNormalization",  # Options: ImageNetNormalization
+    "augmentations": "HorizontalFlip, RandomRotation, RandomCrop, TrivialAugmentWide, TrivialAugmentWide",
+    # Options: "HorizontalFlip", "RandomRotation", "RandomCrop", "TrivialAugmentWide", "RandAugment"
+    "validation_split": 0.1,
+    "learning_rate": 0.001,
+    "epochs": 1,
+    "batch_size": 8,
+    "sampler": "uniform",  # Options: uniform, None
+    "scheduler": "InverseTimeDecay",  # Options: ReduceLROnPlateau, InverseTimeDecay
+    "ReduceLROnPlateau_factor": 0.1,
+    "ReduceLROnPlateau_patience": 5,
+    "InverseTimeDecay_decay_rate": 0.05,
+    "loss_function": "CrossEntropyLoss",  # Options: CrossEntropyLoss
+    "class_weight_adjustments": [1, 1, 1, 1, 1, 1],
+    "optimizer": "Adam",  # Options: Adam, SGD
+    "device": "mps"  # Options: cuda, cpu, mps
 }
 
 # In case you want to create an ensemble model, add the model names/id here
@@ -61,16 +74,17 @@ ENSEMBLE_MODELS = ["h8txabjg", "odyx0ott", "8uu89woq"]
 @app.command()
 def train(offline: bool = False):
     # merge default and custom config
-    config = DEFAULT_TRAIN_CONFIG | CUSTOM_TRAIN_CONFIG
-    # check if valiadation path is valid
-    if not os.path.exists(os.getenv("DATASET_VALIDATION_PATH")):
-        raise FileNotFoundError(f"Directory {os.getenv('DATASET_VALIDATION_PATH')} not found. "
+    config = CURRENT_BEST_TRAIN_CONFIG | CUSTOM_TRAIN_CONFIG
+    # check if validation path is valid
+    if not os.path.exists(os.getenv("DATASET_TEST_PATH")):
+        raise FileNotFoundError(f"Directory {os.getenv('DATASET_TEST_PATH')} not found. "
                                 f"Could not load validation dataset.")
 
     # disable wandb if offline
     os.environ['WANDB_MODE'] = 'offline' if offline else 'online'
     wandb.init(project="cvdl", config=config)
-    _ = train_model(config)
+    train_model(config)
+
     # test model on validation data
     analyze_run_and_upload(config["model_name"])
 
@@ -83,11 +97,11 @@ def inference(model_name: str, data_path: str, output_path: str):
     folder_name = data_path.split('/')[-1]
     output_file_name = f"{folder_name}-{timestamp}-{model_id}.csv"
     print(f"Writing results to {output_file_name}.")
-    results.to_csv(os.path.join(output_path, output_file_name), index=False)
+    results.to_csv(os.path.join(output_path, output_file_name), idx=False)
 
 
 @app.command()
-def analyze(model_name: str, data_path: str = os.getenv("DATASET_VALIDATION_PATH")):
+def analyze(model_name: str, data_path: str = os.getenv("DATASET_TEST_PATH")):
     model_id, results = apply_model(model_name, data_path)
     top_n = accuracies(results, best=3)
     conf_matrix = confusion_matrix(results)
@@ -96,11 +110,12 @@ def analyze(model_name: str, data_path: str = os.getenv("DATASET_VALIDATION_PATH
 
 
 @app.command()
-def demo(model_name: str, record: bool = False, webcam: bool = False, input_file: str = "", show_processing: bool = True):
+def demo(model_name: str, record: bool = False, webcam: bool = False, input_file: str = "",
+         show_processing: bool = True):
     if not webcam and not input_file:
         raise typer.BadParameter("Please specify a video input when not using the camera.")
-    
-    output_dir = os.getenv("VIDEO_OUTPUT_PATH") 
+
+    output_dir = os.getenv("VIDEO_OUTPUT_PATH")
     if not os.path.exists(output_dir) and record:
         os.makedirs(output_dir, exist_ok=True)
 
@@ -129,7 +144,7 @@ def clipped(output_dir: str = "data/clipped_affect_net", use_rafdb_format: bool 
 
 
 @app.command()
-def ensemble(data_path=os.getenv("DATASET_VALIDATION_PATH")):
+def ensemble(data_path=os.getenv("DATASET_TEST_PATH")):
     model_ids = ENSEMBLE_MODELS
     ensemble_results_df = ensemble_results(model_ids, data_path)
 
@@ -142,8 +157,8 @@ def ensemble(data_path=os.getenv("DATASET_VALIDATION_PATH")):
 @app.command()
 def initialize_sweep(entity: str = "your_user_name", count: int = 40):
     project = "cvdl"
-    entity = "your_user_name" # system ignores some user names -> input name here
-    
+    entity = "your_user_name"  # system ignores some user names -> input name here
+
     if entity == "your_user_name":
         raise ValueError("Please enter your user name.")
 
@@ -154,9 +169,8 @@ def initialize_sweep(entity: str = "your_user_name", count: int = 40):
 
 
 @app.command()
-def getActivation(model_name: str, data_path: str = os.getenv("DATASET_VALIDATION_PATH"),
-                     output_path: str = os.getenv("ACTIVATION_VALUES_PATH")):
-    
+def get_activation(model_name: str, data_path: str = os.getenv("DATASET_TEST_PATH"),
+                   output_path: str = os.getenv("ACTIVATION_VALUES_PATH")):
     model_id, results = apply_model(model_name, data_path)
     labels = []
     activation_values_dict = {}

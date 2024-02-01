@@ -50,7 +50,7 @@ def predictions_and_true_labels(inference_result: pd.DataFrame) -> (list, list):
 
 
 def analyze_run_and_upload(model_name: str):
-    validation_data_path = os.getenv("DATASET_VALIDATION_PATH")
+    validation_data_path = os.getenv("DATASET_TEST_PATH")
     model_id, results = apply_model(model_name, validation_data_path)
     top_n = accuracies(results, best=3)
     wandb.log(top_n)

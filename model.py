@@ -57,6 +57,30 @@ class ResNet18(nn.Module):
         return x
 
 
+class ResNet50(nn.Module):
+    def __init__(self, num_classes=6, input_size=64):
+        super(ResNet50, self).__init__()
+        self.input_size = input_size
+        self.model = models.resnet50(weights='IMAGENET1K_V1')
+        self.model.fc = nn.Linear(2048, num_classes)
+
+    def forward(self, x):
+        x = self.model(x)
+        return x
+
+
+class MobileNetV2(nn.Module):
+    def __init__(self, num_classes=6, input_size=64):
+        super(MobileNetV2, self).__init__()
+        self.input_size = input_size
+        self.model = models.mobilenet_v2(weights='IMAGENET1K_V1')
+        self.model.classifier = nn.Linear(1280, num_classes)
+
+    def forward(self, x):
+        x = self.model(x)
+        return x
+
+
 class EmotionModel(nn.Module):
     def __init__(self, num_classes=6):
         super(EmotionModel, self).__init__()
@@ -93,10 +117,7 @@ def _create_conv_block(in_channels, out_channels, pool=True):
     )
 
     if pool:
-        block = nn.Sequential(
-            block,
-            nn.MaxPool2d(kernel_size=2, stride=2)
-        )
+        block.append(nn.MaxPool2d(kernel_size=2, stride=2))
 
     return block
 
@@ -104,7 +125,7 @@ def _create_conv_block(in_channels, out_channels, pool=True):
 def _create_conv_block_2(in_channels, out_channels, pool=True):
     block = nn.Sequential(
         nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=2),
-        nn.BatchNorm2d(out_channels), 
+        nn.BatchNorm2d(out_channels),
         nn.ReLU(inplace=True),
         nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=2),
         nn.BatchNorm2d(out_channels),
@@ -115,17 +136,14 @@ def _create_conv_block_2(in_channels, out_channels, pool=True):
     )
 
     if pool:
-        block = nn.Sequential(
-            block,
-            nn.MaxPool2d(kernel_size=3, stride=2)
-        )
+        block.append(nn.MaxPool2d(kernel_size=3, stride=2))
 
     return block
 
 
-class CustomEmotionModel_3(nn.Module):
+class CustomEmotionModel3(nn.Module):
     def __init__(self, num_classes=6):
-        super(CustomEmotionModel_3, self).__init__()
+        super(CustomEmotionModel3, self).__init__()
 
         self.conv_block1 = _create_conv_block(3, 64)
         self.conv_block2 = _create_conv_block(64, 128)
@@ -154,9 +172,9 @@ class CustomEmotionModel_3(nn.Module):
         return x
 
 
-class CustomEmotionModel_4(nn.Module):
+class CustomEmotionModel4(nn.Module):
     def __init__(self, num_classes=6):
-        super(CustomEmotionModel_4, self).__init__()
+        super(CustomEmotionModel4, self).__init__()
 
         self.conv_block1 = _create_conv_block(3, 64)
         self.conv_block2 = _create_conv_block_2(64, 128)
@@ -179,16 +197,17 @@ class CustomEmotionModel_4(nn.Module):
         x = self.fc2(x)
 
         return x
-    
 
-class CustomEmotionModel_5(nn.Module):
+
+class CustomEmotionModel5(nn.Module):
     def __init__(self, num_classes=6):
-        super(CustomEmotionModel_5, self).__init__()
+        super(CustomEmotionModel5, self).__init__()
 
         self.conv_block1 = _create_conv_block(3, 64)
         self.conv_block2 = _create_conv_block_2(64, 128)
         self.conv_block3 = _create_conv_block(128, 256)
-        self.conv_block4 = _create_conv_block_2(256, 128, pool=False) #to test wether disgust performance relies on 3x3 convolutions
+        self.conv_block4 = _create_conv_block_2(256, 128,
+                                                pool=False)
 
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.flatten = nn.Flatten()
@@ -207,15 +226,16 @@ class CustomEmotionModel_5(nn.Module):
         x = self.dropout(x)
         x = self.fc2(x)
 
-
         return x
 
 
 MODELS = {
     'LeNet': LeNet,
     'ResNet18': ResNet18,
+    'ResNet50': ResNet50,
     'EmotionModel_2': EmotionModel,
-    'CustomEmotionModel_3': CustomEmotionModel_3,
-    'CustomEmotionModel_4': CustomEmotionModel_4,
-    'CustomEmotionModel_5': CustomEmotionModel_5,
+    'CustomEmotionModel3': CustomEmotionModel3,
+    'CustomEmotionModel4': CustomEmotionModel4,
+    'CustomEmotionModel5': CustomEmotionModel5,
+    'MobileNetV2': MobileNetV2
 }

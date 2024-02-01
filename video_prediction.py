@@ -98,7 +98,7 @@ def process_frame(frame, face_cascade, model, device, preprocessing, emotion_sco
     for face_nr, (x, y, w, h) in enumerate(faces):
         id = face_nr + 1
 
-        roi = frame[y : y + h, x : x + w]
+        roi = frame[y: y + h, x: x + w]
 
         predictions = predict_emotions(roi, model, preprocessing, device)
         emotion, score = top_prediction_with_label(predictions)
@@ -162,7 +162,7 @@ def process_frame(frame, face_cascade, model, device, preprocessing, emotion_sco
                 2,
             )
             for i, (emotion, score) in enumerate(
-                zip(LABEL_TO_STR.values(), predictions[0])
+                    zip(LABEL_TO_STR.values(), predictions[0])
             ):
                 cv2.putText(
                     frame,
@@ -204,11 +204,11 @@ def main_loop(cap, face_cascade, model, device, preprocessing, show_processing, 
 
         q_pressed = cv2.waitKey(1) == ord("q")
         window_closed = (
-            show_processing
-            and cv2.getWindowProperty(
-                "Facial Emotion Recognition", cv2.WND_PROP_VISIBLE
-            )
-            < 1
+                show_processing
+                and cv2.getWindowProperty(
+            "Facial Emotion Recognition", cv2.WND_PROP_VISIBLE
+        )
+                < 1
         )
         if q_pressed or window_closed:
             print("Video prediction interrupted.")
@@ -222,12 +222,12 @@ def main_loop(cap, face_cascade, model, device, preprocessing, show_processing, 
 
 
 def make_video_prediction(
-    model_name: str,
-    record: bool,
-    webcam: bool,
-    video_input: str,
-    output_file: str,
-    show_processing: bool,
+        model_name: str,
+        record: bool,
+        webcam: bool,
+        video_input: str,
+        output_file: str,
+        show_processing: bool,
 ):
     """Make video prediction using the model with the given name"""
     face_cascade = cv2.CascadeClassifier(

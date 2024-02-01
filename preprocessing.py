@@ -1,30 +1,34 @@
-import torch
-from torchvision.transforms import v2
+from typing import Optional
+
+import torchvision.transforms as v2
+
+AVAILABLE_PREPROCESSINGS = {
+    "ImageNetNormalization": lambda: v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+}
 
 
-def select_preprocessing(transforms_str):
-    """Select the appropriate transforms for the dataset."""
-    if not transforms_str:
-        return None
+def select_preprocessing(preprocessing_str: str) -> Optional[v2.Compose]:
+    """Select the appropriate preprocessings for the dataset.
 
-    # Split the preprocessing string into individual transforms and strip whitespace
-    transforms_strings = transforms_str.split(", ")
+    Parameters:
+    preprocessing_str (str): A comma-separated string of preprocessing steps.
 
-    # Create a list of transforms
-    transform_list = []
+    Returns:
+    torchvision.transforms.Compose: A Compose object with the specified preprocessing steps.
 
-    transforms_available = {
-        "Resize()": v2.Resize((64, 64)),
-        "ToTensor()": v2.Compose([v2.ToImage(), v2.ToDtype(torch.float32, scale=True)]),
-        "StandardizeGray()": v2.Normalize((0.5,), (0.5,)),
-        "StandardizeRGB()": v2.Normalize((0.5, 0.5, 0.5,), (0.5, 0.5, 0.5,))
-    }
+    Raises:
+    ValueError: If an unsupported transform is specified.
+    """
+    if not preprocessing_str:
+        return v2.Compose([])  # Return an identity transform or default preprocessing
 
-    # Loop over the transforms and add them to the list
-    for transform in transforms_strings:
-        if transform not in transforms_available:
-            raise ValueError(f"Unsupported transform: {transform}")
-        transform_list.append(transforms_available[transform])
+    preprocessing_strings = [t.strip() for t in preprocessing_str.split(",")]
+    preprocessing_list = []
 
-    # Create a torchvision.transforms.Compose object from the list of transforms
-    return v2.Compose(transform_list)
+    for preprocessing in preprocessing_strings:
+        if preprocessing not in AVAILABLE_PREPROCESSINGS:
+            supported = ", ".join(AVAILABLE_PREPROCESSINGS.keys())
+            raise ValueError(f"Unsupported transform: {preprocessing}. Supported transforms are: {supported}")
+        preprocessing_list.append(AVAILABLE_PREPROCESSINGS[preprocessing]())
+
+    return v2.Compose(preprocessing_list)
