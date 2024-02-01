@@ -291,6 +291,8 @@ def main_loop(
         )
 
         if show_processing:
+            # make window resizable
+            cv2.namedWindow("Facial Emotion Recognition", cv2.WINDOW_NORMAL)
             cv2.imshow("Facial Emotion Recognition", processed_frame)
 
         if save:

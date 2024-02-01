@@ -6,12 +6,12 @@ from sklearn.decomposition import PCA
 from utils import LABEL_TO_STR
 
 
-def pca_graph(inference_results: pd.DataFrame):
+def pca_graph(model_id, inference_results: pd.DataFrame, softmax=False):
+    # apply softmax on rows without the file name
+    if softmax:
+        inference_results.iloc[:, 1:] = inference_results.iloc[:, 1:].apply(lambda x: np.exp(x) / np.sum(np.exp(x)),
+                                                                            axis=1)
     # extract the top 2 principal components
-
-    # print colunm names
-    print(inference_results.columns)
-
     pca = PCA(n_components=2)
     principal_components = pca.fit_transform(inference_results.values[:, 1:])
     # create a dataframe with the principal components
@@ -34,7 +34,7 @@ def pca_graph(inference_results: pd.DataFrame):
     ax.grid()
     ax.set_xlabel('PC1', fontsize=15)
     ax.set_ylabel('PC2', fontsize=15)
-    ax.set_title('2 component PCA', fontsize=20)
+    ax.set_title(f"2 component PCA ({model_id})", fontsize=20)
     targets = list(LABEL_TO_STR.values())
     colors = ['r', 'g', 'b', 'c', 'm', 'y']
     for target, color in zip(targets, colors):

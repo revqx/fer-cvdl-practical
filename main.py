@@ -199,9 +199,9 @@ def explain(model_name: str, data_path: str = os.getenv("DATASET_VALIDATION_PATH
 
 
 @app.command()
-def pca(model_name: str, data_path: str = os.getenv("DATASET_VALIDATION_PATH")):
+def pca(model_name: str, data_path: str = os.getenv("DATASET_VALIDATION_PATH"), softmax: bool = False):
     model_id, results = apply_model(model_name, data_path)
-    pca_graph(results)
+    pca_graph(model_id, results, softmax=softmax)
 
 
 if __name__ == "__main__":
