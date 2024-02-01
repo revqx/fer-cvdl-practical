@@ -1,14 +1,13 @@
 import numpy as np
 import torch
-import torch.nn.functional as F
-from sklearn.model_selection import train_test_split
-
 import torch.nn as nn
+import torch.nn.functional as F
 import wandb
+from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader, WeightedRandomSampler
 
 from dataset import get_dataset
-from model import get_model, _create_conv_block, _create_conv_block_2
+from model import _create_conv_block
 from model import get_model
 from preprocessing import select_preprocessing
 
@@ -120,7 +119,7 @@ def train_sweep(custom_model=True):
 
 def train_epoch(model, loader, optimizer, device):
     model.train()
-    cumu_loss = 0
+    cumulative_loss = 0
     for _, (data, target) in enumerate(loader):
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
@@ -129,7 +128,7 @@ def train_epoch(model, loader, optimizer, device):
         output = model(data)
         log_output = F.log_softmax(output, dim=1)
         loss = F.nll_loss(log_output, target)  # loss calculation interchangeable
-        cumu_loss += loss.item()
+        cumulative_loss += loss.item()
 
         # ⬅ Backward pass + weight update
         loss.backward()
@@ -137,12 +136,12 @@ def train_epoch(model, loader, optimizer, device):
 
         wandb.log({"batch loss": loss.item()})
 
-    return cumu_loss / len(loader)
+    return cumulative_loss / len(loader)
 
 
 def validate(model, loader, device):
     model.eval()
-    cumu_loss = 0
+    cumulative_loss = 0
     with torch.no_grad():
         for _, (data, target) in enumerate(loader):
             data, target = data.to(device), target.to(device)
@@ -150,9 +149,9 @@ def validate(model, loader, device):
             output = model(data)
             log_output = F.log_softmax(output, dim=1)
             loss = F.nll_loss(log_output, target)
-            cumu_loss += loss.item()
+            cumulative_loss += loss.item()
 
-    return cumu_loss / len(loader)
+    return cumulative_loss / len(loader)
 
 
 def get_optimizer_sweep(optimizer, model, learning_rate):

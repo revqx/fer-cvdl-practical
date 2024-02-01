@@ -54,7 +54,7 @@ CUSTOM_TRAIN_CONFIG = {
     # Options: "HorizontalFlip", "RandomRotation", "RandomCrop", "TrivialAugmentWide", "RandAugment"
     "validation_split": 0.1,
     "learning_rate": 0.001,
-    "epochs": 20,
+    "epochs": 1,
     "batch_size": 8,
     "sampler": "uniform",  # Options: uniform, None
     "scheduler": "InverseTimeDecay",  # Options: ReduceLROnPlateau, InverseTimeDecay
@@ -75,7 +75,7 @@ ENSEMBLE_MODELS = ["h8txabjg", "odyx0ott", "8uu89woq"]
 def train(offline: bool = False):
     # merge default and custom config
     config = CURRENT_BEST_TRAIN_CONFIG | CUSTOM_TRAIN_CONFIG
-    # check if valiadation path is valid
+    # check if validation path is valid
     if not os.path.exists(os.getenv("DATASET_TEST_PATH")):
         raise FileNotFoundError(f"Directory {os.getenv('DATASET_TEST_PATH')} not found. "
                                 f"Could not load validation dataset.")
@@ -169,8 +169,8 @@ def initialize_sweep(entity: str = "your_user_name", count: int = 40):
 
 
 @app.command()
-def getActivation(model_name: str, data_path: str = os.getenv("DATASET_TEST_PATH"),
-                  output_path: str = os.getenv("ACTIVATION_VALUES_PATH")):
+def get_activation(model_name: str, data_path: str = os.getenv("DATASET_TEST_PATH"),
+                   output_path: str = os.getenv("ACTIVATION_VALUES_PATH")):
     model_id, results = apply_model(model_name, data_path)
     labels = []
     activation_values_dict = {}

@@ -8,10 +8,11 @@ from sklearn.model_selection import train_test_split
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader, WeightedRandomSampler
 from tqdm import tqdm
+
+from augment import select_augmentations
 from dataset import get_dataset, DatasetWrapper
 from model import get_model
 from preprocessing import select_preprocessing
-from augment import select_augmentations
 
 
 def train_model(config: dict):
@@ -164,4 +165,3 @@ def train_val_dataloaders(dataset, preprocessing, augmentations, validation_spli
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
     return train_loader, val_loader
-

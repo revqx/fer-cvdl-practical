@@ -117,10 +117,7 @@ def _create_conv_block(in_channels, out_channels, pool=True):
     )
 
     if pool:
-        block = nn.Sequential(
-            block,
-            nn.MaxPool2d(kernel_size=2, stride=2)
-        )
+        block.append(nn.MaxPool2d(kernel_size=2, stride=2))
 
     return block
 
@@ -139,10 +136,7 @@ def _create_conv_block_2(in_channels, out_channels, pool=True):
     )
 
     if pool:
-        block = nn.Sequential(
-            block,
-            nn.MaxPool2d(kernel_size=3, stride=2)
-        )
+        block.append(nn.MaxPool2d(kernel_size=3, stride=2))
 
     return block
 
@@ -213,7 +207,7 @@ class CustomEmotionModel5(nn.Module):
         self.conv_block2 = _create_conv_block_2(64, 128)
         self.conv_block3 = _create_conv_block(128, 256)
         self.conv_block4 = _create_conv_block_2(256, 128,
-                                                pool=False)  # to test wether disgust performance relies on 3x3 convolutions
+                                                pool=False)
 
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.flatten = nn.Flatten()
