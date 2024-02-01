@@ -147,9 +147,9 @@ def _create_conv_block_2(in_channels, out_channels, pool=True):
     return block
 
 
-class CustomEmotionModel_3(nn.Module):
+class CustomEmotionModel3(nn.Module):
     def __init__(self, num_classes=6):
-        super(CustomEmotionModel_3, self).__init__()
+        super(CustomEmotionModel3, self).__init__()
 
         self.conv_block1 = _create_conv_block(3, 64)
         self.conv_block2 = _create_conv_block(64, 128)
@@ -178,9 +178,9 @@ class CustomEmotionModel_3(nn.Module):
         return x
 
 
-class CustomEmotionModel_4(nn.Module):
+class CustomEmotionModel4(nn.Module):
     def __init__(self, num_classes=6):
-        super(CustomEmotionModel_4, self).__init__()
+        super(CustomEmotionModel4, self).__init__()
 
         self.conv_block1 = _create_conv_block(3, 64)
         self.conv_block2 = _create_conv_block_2(64, 128)
@@ -205,9 +205,9 @@ class CustomEmotionModel_4(nn.Module):
         return x
 
 
-class CustomEmotionModel_5(nn.Module):
+class CustomEmotionModel5(nn.Module):
     def __init__(self, num_classes=6):
-        super(CustomEmotionModel_5, self).__init__()
+        super(CustomEmotionModel5, self).__init__()
 
         self.conv_block1 = _create_conv_block(3, 64)
         self.conv_block2 = _create_conv_block_2(64, 128)
@@ -240,8 +240,8 @@ MODELS = {
     'ResNet18': ResNet18,
     'ResNet50': ResNet50,
     'EmotionModel_2': EmotionModel,
-    'CustomEmotionModel_3': CustomEmotionModel_3,
-    'CustomEmotionModel_4': CustomEmotionModel_4,
-    'CustomEmotionModel_5': CustomEmotionModel_5,
+    'CustomEmotionModel3': CustomEmotionModel3,
+    'CustomEmotionModel4': CustomEmotionModel4,
+    'CustomEmotionModel5': CustomEmotionModel5,
     'MobileNetV2': MobileNetV2
 }

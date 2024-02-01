@@ -1,6 +1,16 @@
 import os
-import torchvision.transforms as v2
-from utils import load_images, AVAILABLE_AUGMENTATIONS
+
+from torchvision.transforms import v2
+
+from utils import load_images
+
+AVAILABLE_AUGMENTATIONS = {
+    "HorizontalFlip": v2.RandomHorizontalFlip(p=1),  # Always apply horizontal flip
+    "RandomRotation": v2.RandomRotation(degrees=(-10, 10)),
+    "RandomCrop": v2.RandomAffine(degrees=0, translate=(0, 0), scale=(1.0, 1.3), shear=0),
+    "TrivialAugmentWide": v2.TrivialAugmentWide(),
+    "RandAugment": v2.RandAugment()
+}
 
 
 def select_augmentations(augmentations_str: str) -> list[v2.Compose]:
@@ -34,12 +44,3 @@ def augment_images(input_dir, output_dir, augmentations):
             augmented_tensor = augmentation(tensor)
             augmented_image = tensor_to_image(augmented_tensor)
             augmented_image.save(os.path.join(output_dir, f"{filename_without_extension}_aug{i}.jpg"))
-
-
-if __name__ == "__main__":
-    input_dir = "/Users/marius/github/fer-cvdl-practical/data/augmentations"
-    output_dir = "/Users/marius/github/fer-cvdl-practical/data/augmentations"
-    augmentations_str = "TrivialAugmentWide"
-
-    augmentations = select_augmentations(augmentations_str)
-    augment_images(input_dir, output_dir, augmentations)

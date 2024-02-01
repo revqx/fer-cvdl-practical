@@ -15,9 +15,9 @@ from augment import select_augmentations
 
 
 def train_model(config: dict):
-    path = os.getenv('MODEL_SAVE_PATH')
-    if not os.path.exists(path):
-        raise FileNotFoundError(f"Directory {path} not found. Will not be able to save model.")
+    model_save_path = os.getenv('MODEL_SAVE_PATH')
+    if not os.path.exists(model_save_path):
+        raise FileNotFoundError(f"Directory {model_save_path} not found. Will not be able to save model.")
 
     # Set device
     if (config["device"] == "cuda") and (not torch.cuda.is_available()):
@@ -31,31 +31,44 @@ def train_model(config: dict):
     dataset = get_dataset(config["train_data"])
     train_loader, val_loader = train_val_dataloaders(dataset, preprocessing, augmentations,
                                                      config["validation_split"], config["batch_size"],
-                                                     config["sampler"], config["weak_class_adjust"])
+                                                     config["sampler"], config["class_weight_adjustments"])
 
     # Model selection
     model = get_model(config["model_name"])
     model.to(device)
 
-    # Define loss function and optimizer
+    # Define loss function
     criterion = torch.nn.CrossEntropyLoss()
 
+    # Optimizer selection with error handling
     if config["optimizer"] == "Adam":
         optimizer = torch.optim.Adam(model.parameters(), lr=config["learning_rate"])
     elif config["optimizer"] == "SGD":
         optimizer = torch.optim.SGD(model.parameters(), lr=config["learning_rate"])
+    else:
+        raise ValueError(f"Invalid optimizer selection: '{config['optimizer']}'. Choose 'Adam' or 'SGD'.")
 
-    scheduler = ReduceLROnPlateau(optimizer, 'min', patience=config["patience"], verbose=True)
+    # Scheduler selection with error handling
+    if config["scheduler"] == "ReduceLROnPlateau":
+        scheduler = ReduceLROnPlateau(optimizer, 'min', patience=config["ReduceLROnPlateau_patience"], verbose=True)
+    elif config["scheduler"] == "InverseTimeDecay":
+        lambda_func = lambda epoch: 1 / (1 + config["InverseTimeDecay_decay_rate"] * epoch)
+        scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda_func)
+    else:
+        raise ValueError(
+            f"Invalid scheduler selection: '{config['scheduler']}'. Choose 'ReduceLROnPlateau' or 'InverseTimeDecay'.")
+
+    # Define model path
+    timestamp = datetime.now().strftime("%Y%m%dT%H%M%S")
+    wandb_id = wandb.run.id
+    model_save_path = os.path.join(model_save_path, f"{config['model_name']}-{timestamp}-{wandb_id}.pth")
 
     # Train and evaluate the model
     training_loop(model, train_loader, val_loader, criterion, optimizer, scheduler, config)
 
     # Save model and transforms
-    timestamp = datetime.now().strftime("%Y%m%dT%H%M%S")
-    wandb_id = wandb.run.id
-    path = os.path.join(path, f"{config['model_name']}-{timestamp}-{wandb_id}.pth")
-    torch.save({'model': model.state_dict(), 'preprocessing': preprocessing}, path)
-    print(f"Saved the model to {path}.")
+    torch.save({'model': model.state_dict(), 'preprocessing': preprocessing}, model_save_path)
+    print(f"Saved the model to {model_save_path}.")
 
 
 def training_loop(model, train_loader, val_loader, criterion, optimizer, scheduler, config):
@@ -112,7 +125,7 @@ def training_loop(model, train_loader, val_loader, criterion, optimizer, schedul
 
 
 def train_val_dataloaders(dataset, preprocessing, augmentations, validation_split, batch_size, sampler=None,
-                          weak_class_adjust=False):
+                          class_weight_adjustments=None):
     img_paths = [path for path, _ in dataset]
     labels = [label for _, label in dataset]
 
@@ -121,11 +134,15 @@ def train_val_dataloaders(dataset, preprocessing, augmentations, validation_spli
         class_counts = np.bincount(labels)
         class_weights = 1. / class_counts
 
-        if weak_class_adjust:
-            # Adjust weights for specific classes
-            fear_class, disgust_class = 2, 1
-            class_weights[fear_class] *= 1
-            class_weights[disgust_class] *= 1
+        if class_weight_adjustments is not None:
+            # Ensure the adjustments array has the same length as the number of classes
+            num_classes = len(class_weights)
+            if len(class_weight_adjustments) != num_classes:
+                raise ValueError(f"Invalid class_weight_adjustments: {class_weight_adjustments}. It should contain "
+                                 f"{num_classes} elements in the same order as LABEL_TO_STR is defined in utils.py.")
+
+            # Apply the weight adjustments
+            class_weights *= class_weight_adjustments
 
         weights = class_weights[labels]
         sampler = WeightedRandomSampler(weights, len(weights))
@@ -147,3 +164,4 @@ def train_val_dataloaders(dataset, preprocessing, augmentations, validation_spli
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
     return train_loader, val_loader
+

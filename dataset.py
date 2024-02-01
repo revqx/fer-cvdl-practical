@@ -1,4 +1,5 @@
 import os
+
 import pandas as pd
 import torch
 from PIL import Image
@@ -36,7 +37,7 @@ class AffectNet(Dataset):
         self.annotations['label'] = self.annotations['label'].apply(lambda x: LABEL_TO_NUM[x])
 
     def __getitem__(self, item):
-        # needed for sweep to work (don't ask why)
+        # needed for sweep to work
         if item >= len(self.annotations):
             raise IndexError(f"Index {item} out of range")
 

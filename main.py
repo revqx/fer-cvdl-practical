@@ -1,11 +1,10 @@
+import json
 import os
 from datetime import datetime
-import json
 
 import typer
 import wandb
 from dotenv import load_dotenv
-from utils import LABEL_TO_STR, label_from_path
 
 from analyze import accuracies, confusion_matrix, analyze_run_and_upload
 from clip_affect_net import clip_affect_net_faces
@@ -13,6 +12,7 @@ from ensemble import ensemble_results
 from inference import apply_model
 from sweeps import get_sweep_config, train_sweep
 from train import train_model
+from utils import label_from_path
 from video_prediction import make_video_prediction
 
 load_dotenv()
@@ -21,42 +21,48 @@ app = typer.Typer()
 # Default config for training should not be altered by the user
 # See custom config below for options
 CURRENT_BEST_TRAIN_CONFIG = {
-    "model_name": "ResNet50",
+    "model_name": "CustomEmotionModel3",
+    # Options: LeNet, ResNet_{18, 50}, EmotionModel_2, CustomEmotionModel{3, 4, 5}, MobileNetV2
     "model_description": "",
-    "train_data": "RAF-DB",
-    "preprocessing": "",
-    "augmentations": "HorizontalFlip, RandomRotation, RandomCrop, TrivialAugmentWide, TrivialAugmentWide, TrivialAugmentWide",
-    "validation_split": 0.2,
+    "train_data": "RAF-DB",  # Options: AffectNet, RAF-DB
+    "preprocessing": "ImageNetNormalization",  # Options: ImageNetNormalization
+    "augmentations": "HorizontalFlip, RandomRotation, RandomCrop, TrivialAugmentWide, TrivialAugmentWide",
+    # Options: "HorizontalFlip", "RandomRotation", "RandomCrop", "TrivialAugmentWide", "RandAugment"
+    "validation_split": 0.1,
     "learning_rate": 0.001,
-    "sampler": "uniform",
-    "ReduceLR_factor": 0.1,
-    "patience": 5,
-    "epochs": 30,
+    "epochs": 20,
     "batch_size": 32,
-    "loss_function": "CrossEntropyLoss",
-    "weak_class_adjust": False,
-    "optimizer": "Adam",
-    "device": "cpu"
+    "sampler": "uniform",  # Options: uniform, None
+    "scheduler": "ReduceLROnPlateau",
+    "ReduceLROnPlateau_factor": 0.1,
+    "ReduceLROnPlateau_patience": 5,
+    "InverseTimeDecay_decay_rate": 0.001,
+    "loss_function": "CrossEntropyLoss",  # Options: CrossEntropyLoss
+    "class_weight_adjustments": [1, 1, 1, 1, 1, 1],
+    "optimizer": "Adam",  # Options: Adam, SGD
+    "device": "mps"  # Options: cuda, cpu, mps
 }
 
 # If you want to use a custom config, change this one as you like
 CUSTOM_TRAIN_CONFIG = {
-    "model_name": "ResNet50",
-    # Options: LeNet, ResNet_{18, 50}, EmotionModel_2, CustomEmotionModel_{3, 4, 5}, MobileNetV2
+    "model_name": "CustomEmotionModel3",
+    # Options: LeNet, ResNet_{18, 50}, EmotionModel_2, CustomEmotionModel{3, 4, 5}, MobileNetV2
     "model_description": "",
-    "train_data": "AffectNet",  # Options: AffectNet, RAF-DB
+    "train_data": "RAF-DB",  # Options: AffectNet, RAF-DB
     "preprocessing": "ImageNetNormalization",  # Options: ImageNetNormalization
-    "augmentations": "HorizontalFlip, RandomRotation, RandomCrop, TrivialAugmentWide, TrivialAugmentWide, TrivialAugmentWide",
-    # Options: "HorizontalFlip", "RandomRotation", "RandomCrop", "TrivialAugmentWide"
+    "augmentations": "HorizontalFlip, RandomRotation, RandomCrop, TrivialAugmentWide, TrivialAugmentWide",
+    # Options: "HorizontalFlip", "RandomRotation", "RandomCrop", "TrivialAugmentWide", "RandAugment"
     "validation_split": 0.1,
     "learning_rate": 0.001,
+    "epochs": 20,
+    "batch_size": 8,
     "sampler": "uniform",  # Options: uniform, None
-    "ReduceLR_factor": 0.1,
-    "patience": 5,
-    "epochs": 50,
-    "batch_size": 32,
+    "scheduler": "InverseTimeDecay",  # Options: ReduceLROnPlateau, InverseTimeDecay
+    "ReduceLROnPlateau_factor": 0.1,
+    "ReduceLROnPlateau_patience": 5,
+    "InverseTimeDecay_decay_rate": 0.05,
     "loss_function": "CrossEntropyLoss",  # Options: CrossEntropyLoss
-    "weak_class_adjust": False,
+    "class_weight_adjustments": [1, 1, 1, 1, 1, 1],
     "optimizer": "Adam",  # Options: Adam, SGD
     "device": "mps"  # Options: cuda, cpu, mps
 }

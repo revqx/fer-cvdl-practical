@@ -60,7 +60,7 @@ def get_sweep_config(metric="val_loss", goal="minimize", method="random",
         parameters_dict.update({
             "model_name": {
                 "values": ["model_name"]
-            }  # options: EmotionModel_2, CustomEmotionModel_3, LeNet, ResNet18
+            }  # options: EmotionModel_2, CustomEmotionModel3, LeNet, ResNet18
         })
         sweep_config["parameters"] = parameters_dict
 
