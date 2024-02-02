@@ -49,8 +49,7 @@ def train_model(config: dict):
     dataset = get_dataset(config["train_data"])
     train_loader, val_loader = train_val_dataloaders(dataset, preprocessing, augmentations,
                                                      config["validation_split"], config["batch_size"],
-                                                     config["sampler"], config["class_weight_adjustments"],
-                                                     config["device"])
+                                                     config["sampler"], config["class_weight_adjustments"])
 
     # Define loss function
     criterion = torch.nn.CrossEntropyLoss()
@@ -150,7 +149,7 @@ def training_loop(model, train_loader, val_loader, criterion, optimizer, schedul
 
 
 def train_val_dataloaders(dataset, preprocessing, augmentations, validation_split, batch_size, sampler=None,
-                          class_weight_adjustments=None, device="cpu"):
+                          class_weight_adjustments=None):
     if validation_split < 0 or validation_split >= 1:
         raise ValueError(f"Invalid validation_split: {validation_split}. It should be in the range [0, 1).")
 
@@ -189,7 +188,7 @@ def train_val_dataloaders(dataset, preprocessing, augmentations, validation_spli
         img_paths, labels, test_size=validation_split, stratify=labels)
 
     # Create augmented dataset instances for training and validation
-    train_dataset = DatasetWrapper(train_data, train_labels, preprocessing, augmentations, device)
+    train_dataset = DatasetWrapper(train_data, train_labels, preprocessing, augmentations)
     # No augmentations for validation
     val_dataset = DatasetWrapper(val_data, val_labels, preprocessing)
 
