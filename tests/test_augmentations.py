@@ -1,4 +1,4 @@
-from augment import select_augmentations, augment_images
+from augmentation import select_augmentations, augment_images
 
 if __name__ == "__main__":
     input_dir = "/Users/marius/github/fer-cvdl-practical/data/augmentations"

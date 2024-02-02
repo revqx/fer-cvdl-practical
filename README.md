@@ -8,9 +8,13 @@
 pip install -r requirements.txt
 ```
 
-2. Put the affectnet dataset into `./data/affectnet`, the fer2013 dataset into `./data/fer2013`, and the rafdb dataset into `./data/raf_db`. The given validation set should be put into `./data/test`. You can also change the paths in `.env` to your liking.
+2. Put the affectnet dataset into `./data/affectnet`, the fer2013 dataset into `./data/fer2013`, and the rafdb dataset
+   into `./data/raf_db`. The given validation set should be put into `./data/test`. You can also change the paths
+   in `.env` to your liking.
 
-3. If you want to use the face detection, download the haar cascade from [here](https://github.com/opencv/opencv/blob/4.x/data/haarcascades/haarcascade_frontalface_default.xml) and put it into the `/cascades` folder.
+3. If you want to use the face detection, download the haar cascade
+   from [here](https://github.com/opencv/opencv/blob/4.x/data/haarcascades/haarcascade_frontalface_default.xml) and put
+   it into the `/cascades` folder.
 
 ## Train
 
@@ -51,11 +55,11 @@ python main.py demo <model-identifier>
 ```
 
 Optional arguments:
+
 - `<record` record the demo, default is `False`
 - `<webcam>` use webcam as input, default is `False`
 - `<input-file>` set a video file as input, required if not using webcam
 - `<show-processing>` show the processing of the video, default is `True`
-
 
 ## Other utilities
 
@@ -67,7 +71,8 @@ python main.py clipped
 
 Optional Arguments:
 
-- `<output-dir>` directory to store the clipped faces, default is the path to the AffectNet dataset as specified in `.env`
+- `<output-dir>` directory to store the clipped faces, default is the path to the AffectNet dataset as specified
+  in `.env`
 - `<use-rafdb-format>` use the RAF-DB format for the output, default is `False`
 
 ### Creating an ensemble of models

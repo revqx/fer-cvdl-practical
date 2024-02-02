@@ -49,7 +49,7 @@ class ResNet18(nn.Module):
     def __init__(self, num_classes=6, input_size=64):
         super(ResNet18, self).__init__()
         self.input_size = input_size
-        self.model = models.resnet18(weights='IMAGENET1K_V1')
+        self.model = models.resnet18(weights="IMAGENET1K_V1")
         self.model.fc = nn.Linear(512, num_classes)
 
     def forward(self, x):
@@ -61,7 +61,7 @@ class ResNet50(nn.Module):
     def __init__(self, num_classes=6, input_size=64):
         super(ResNet50, self).__init__()
         self.input_size = input_size
-        self.model = models.resnet50(weights='IMAGENET1K_V1')
+        self.model = models.resnet50(weights="IMAGENET1K_V1")
         self.model.fc = nn.Linear(2048, num_classes)
 
     def forward(self, x):
@@ -73,7 +73,7 @@ class MobileNetV2(nn.Module):
     def __init__(self, num_classes=6, input_size=64):
         super(MobileNetV2, self).__init__()
         self.input_size = input_size
-        self.model = models.mobilenet_v2(weights='IMAGENET1K_V1')
+        self.model = models.mobilenet_v2(weights="IMAGENET1K_V1")
         self.model.classifier = nn.Linear(1280, num_classes)
 
     def forward(self, x):
@@ -230,12 +230,12 @@ class CustomEmotionModel5(nn.Module):
 
 
 MODELS = {
-    'LeNet': LeNet,
-    'ResNet18': ResNet18,
-    'ResNet50': ResNet50,
-    'EmotionModel_2': EmotionModel,
-    'CustomEmotionModel3': CustomEmotionModel3,
-    'CustomEmotionModel4': CustomEmotionModel4,
-    'CustomEmotionModel5': CustomEmotionModel5,
-    'MobileNetV2': MobileNetV2
+    "LeNet": LeNet,
+    "ResNet18": ResNet18,
+    "ResNet50": ResNet50,
+    "EmotionModel2": EmotionModel,
+    "CustomEmotionModel3": CustomEmotionModel3,
+    "CustomEmotionModel4": CustomEmotionModel4,
+    "CustomEmotionModel5": CustomEmotionModel5,
+    "MobileNetV2": MobileNetV2
 }

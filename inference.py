@@ -1,13 +1,8 @@
-import glob
-import os
-
 import pandas as pd
 import torch
-import torchvision.transforms.v2
 from tqdm import tqdm
 
-from model import get_model
-from utils import LABEL_TO_STR, load_images
+from utils import LABEL_TO_STR, load_images, load_model_and_preprocessing
 
 
 def apply_model(model_name: str, data_path: str):
@@ -26,7 +21,7 @@ def apply_model(model_name: str, data_path: str):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model.to(device)
 
-    columns = ['file'] + [LABEL_TO_STR[i] for i in range(len(LABEL_TO_STR))]
+    columns = ["file"] + [LABEL_TO_STR[i] for i in range(len(LABEL_TO_STR))]
     results_df = pd.DataFrame(columns=columns)
 
     path_tensor_pairs = load_images([data_path])
@@ -39,60 +34,3 @@ def apply_model(model_name: str, data_path: str):
         results_df.loc[len(results_df)] = [path] + output
 
     return model_id, results_df
-
-
-def load_model_and_preprocessing(model_name: str) -> (str, torch.nn.Module, torchvision.transforms.v2.Compose):
-    """Chooses most recent model with name or choose model by id."""
-
-    # Find all files in the specified directory that match the model class name
-    model_files = get_available_models()
-    if not model_files:
-        raise ValueError(f"No models found in path.")
-
-    possible = []
-    selected_model_path = None
-
-    for model_path in model_files:
-        model_time_id = os.path.basename(model_path)
-        if model_time_id.startswith(model_name):
-            possible.append(model_path)
-        if model_time_id.endswith(f"{model_name}.pth"):
-            possible.append(model_path)
-            selected_model_path = model_path
-
-    if not possible:
-        raise ValueError(f"No model found with identifier {model_name}")
-
-    # found exact matching id
-    if not selected_model_path:
-        # Extract timestamps from the model filenames
-        timestamps = [os.path.basename(file).split('-')[-2] for file in possible]
-
-        # Find the index of the most recent timestamp
-        latest_idx = timestamps.index(max(timestamps))
-
-        # Load the most recent model
-        selected_model_path = possible[latest_idx]
-
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    loaded_model_dict = torch.load(selected_model_path, map_location=device)
-
-    # Reconstruct the model
-    model_type = os.path.basename(selected_model_path).split('-')[0]
-    model_id = os.path.basename(selected_model_path).split('-')[-1][:-4]
-    loaded_model = get_model(model_type)
-    loaded_model.load_state_dict(loaded_model_dict['model'])
-    loaded_preprocessing = loaded_model_dict['preprocessing']
-
-    print(f"Loaded model from {selected_model_path}")
-    return model_id, loaded_model, loaded_preprocessing
-
-
-def get_available_models():
-    path = os.getenv('MODEL_SAVE_PATH')
-    if not os.path.exists(path):
-        raise EnvironmentError('Path for saved models not specified!')
-    # all files in folder at path
-    pattern = os.path.join(path, f"*-*-*.pth")
-    model_files = glob.glob(pattern)
-    return model_files

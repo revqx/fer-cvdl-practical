@@ -13,7 +13,7 @@ from preprocessing import select_preprocessing
 
 
 def get_sweep_config(metric="val_loss", goal="minimize", method="random",
-                     custom_model=True, early_terminate=None):
+                     custom_model=True, early_terminate=False):
     sweep_config = {
         "method": method  # to be specified by user
     }
@@ -27,7 +27,7 @@ def get_sweep_config(metric="val_loss", goal="minimize", method="random",
     # parameters to sweep over (dropout not possible atm because models need custom input for dropout)
     parameters_dict = {
         "optimizer": {
-            "values": ['sgd']  # options: adam, sgd
+            "values": ["sgd"]  # options: adam, sgd
         },
         "dataset": {
             "values": ["RAF-DB"]  # options: AffectNet, RAF-DB
@@ -58,31 +58,32 @@ def get_sweep_config(metric="val_loss", goal="minimize", method="random",
     else:
         parameters_dict.update({
             "model_name": {
-                "values": ["model_name"]
+                "values": ["CustomEmotionModel3, ResNet50, MobileNetV2"]
             }  # options: EmotionModel_2, CustomEmotionModel3, LeNet, ResNet18
         })
         sweep_config["parameters"] = parameters_dict
 
     if sweep_config["method"] == "grid":
         parameters_dict.update({
-            'epochs': {
-                'value': 1}
+            "epochs": {
+                "value": 10
+            }
         })
     else:
         parameters_dict.update({
             "learning_rate": {
                 # a flat distribution between 0 and 0.1
-                'distribution': 'uniform',
-                'min': 0.0001,
-                'max': 0.1
+                "distribution": "uniform",
+                "min": 0.0001,
+                "max": 0.1
             },
-            'epochs': {
-                'value': 3  # adjust to your liking (3 gives more accurate results than 1)
+            "epochs": {
+                "value": 3  # adjust to your liking (3 gives more accurate results than 1)
             }
         })
     sweep_config["parameters"] = parameters_dict
 
-    if early_terminate is not None:
+    if early_terminate:
         sweep_config["early_terminate"] = {"type": "hyperband", "min_iter": 5, "eta": 3}
 
     return sweep_config

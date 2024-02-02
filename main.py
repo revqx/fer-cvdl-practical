@@ -18,49 +18,49 @@ from video_prediction import make_video_prediction
 load_dotenv()
 app = typer.Typer()
 
-# Default config for training should not be altered by the user
-# See custom config below for options
+# This should not be changed unless the current run is better than the current best
+# See CUSTOM_TRAIN_CONFIG for config options
 CURRENT_BEST_TRAIN_CONFIG = {
     "model_name": "CustomEmotionModel3",
-    # Options: LeNet, ResNet_{18, 50}, EmotionModel_2, CustomEmotionModel{3, 4, 5}, MobileNetV2
     "model_description": "",
-    "train_data": "RAF-DB",  # Options: AffectNet, RAF-DB
-    "preprocessing": "ImageNetNormalization",  # Options: ImageNetNormalization
+    "pretrained_model": "",
+    "train_data": "RAF-DB",
+    "preprocessing": "ImageNetNormalization",
     "augmentations": "HorizontalFlip, RandomRotation, RandomCrop, TrivialAugmentWide, TrivialAugmentWide",
-    # Options: "HorizontalFlip", "RandomRotation", "RandomCrop", "TrivialAugmentWide", "RandAugment"
     "validation_split": 0.1,
     "learning_rate": 0.001,
     "epochs": 20,
     "batch_size": 32,
-    "sampler": "uniform",  # Options: uniform, None
+    "sampler": "uniform",
     "scheduler": "ReduceLROnPlateau",
     "ReduceLROnPlateau_factor": 0.1,
     "ReduceLROnPlateau_patience": 5,
-    "InverseTimeDecay_decay_rate": 0.001,
-    "loss_function": "CrossEntropyLoss",  # Options: CrossEntropyLoss
+    "StepLR_decay_rate": 0.95,
+    "loss_function": "CrossEntropyLoss",
     "class_weight_adjustments": [1, 1, 1, 1, 1, 1],
-    "optimizer": "Adam",  # Options: Adam, SGD
-    "device": "mps"  # Options: cuda, cpu, mps
+    "optimizer": "Adam",
+    "device": "mps"
 }
 
 # If you want to use a custom config, change this one as you like
 CUSTOM_TRAIN_CONFIG = {
     "model_name": "CustomEmotionModel3",
-    # Options: LeNet, ResNet_{18, 50}, EmotionModel_2, CustomEmotionModel{3, 4, 5}, MobileNetV2
+    # Options: LeNet, ResNet{18, 50}, EmotionModel2, CustomEmotionModel{3, 4, 5}, MobileNetV2
     "model_description": "",
+    "pretrained_model": "p28ita7r",  # Options: model_id, model_name (for better wandb logging, use the model id)
     "train_data": "RAF-DB",  # Options: AffectNet, RAF-DB
-    "preprocessing": "ImageNetNormalization",  # Options: ImageNetNormalization
+    "preprocessing": "ImageNetNormalization",  # Options: ImageNetNormalization, Grayscale
     "augmentations": "HorizontalFlip, RandomRotation, RandomCrop, TrivialAugmentWide, TrivialAugmentWide",
     # Options: "HorizontalFlip", "RandomRotation", "RandomCrop", "TrivialAugmentWide", "RandAugment"
     "validation_split": 0.1,
     "learning_rate": 0.001,
-    "epochs": 1,
-    "batch_size": 8,
-    "sampler": "uniform",  # Options: uniform, None
-    "scheduler": "InverseTimeDecay",  # Options: ReduceLROnPlateau, InverseTimeDecay
+    "epochs": 2,
+    "batch_size": 32,
+    "sampler": "uniform",  # Options: uniform
+    "scheduler": "StepLR",  # Options: ReduceLROnPlateau, StepLR
     "ReduceLROnPlateau_factor": 0.1,
     "ReduceLROnPlateau_patience": 5,
-    "InverseTimeDecay_decay_rate": 0.05,
+    "StepLR_decay_rate": 0.95,
     "loss_function": "CrossEntropyLoss",  # Options: CrossEntropyLoss
     "class_weight_adjustments": [1, 1, 1, 1, 1, 1],
     "optimizer": "Adam",  # Options: Adam, SGD
@@ -81,7 +81,7 @@ def train(offline: bool = False):
                                 f"Could not load validation dataset.")
 
     # disable wandb if offline
-    os.environ['WANDB_MODE'] = 'offline' if offline else 'online'
+    os.environ["WANDB_MODE"] = "offline" if offline else "online"
     wandb.init(project="cvdl", config=config)
     train_model(config)
 
@@ -94,7 +94,7 @@ def inference(model_name: str, data_path: str, output_path: str):
     model_id, results = apply_model(model_name, data_path)
     # create name from model_name and timestamp and input files
     timestamp = datetime.now().strftime("%Y%m%dT%H%M%S")
-    folder_name = data_path.split('/')[-1]
+    folder_name = data_path.split("/")[-1]
     output_file_name = f"{folder_name}-{timestamp}-{model_id}.csv"
     print(f"Writing results to {output_file_name}.")
     results.to_csv(os.path.join(output_path, output_file_name), idx=False)
@@ -103,7 +103,7 @@ def inference(model_name: str, data_path: str, output_path: str):
 @app.command()
 def analyze(model_name: str, data_path: str = os.getenv("DATASET_TEST_PATH")):
     model_id, results = apply_model(model_name, data_path)
-    top_n = accuracies(results, best=3)
+    top_n = accuracies(results)
     conf_matrix = confusion_matrix(results)
     print(conf_matrix)
     print(top_n)
@@ -126,7 +126,7 @@ def demo(model_name: str, record: bool = False, webcam: bool = False, input_file
 
 @app.command()
 def clipped(output_dir: str = "data/clipped_affect_net", use_rafdb_format: bool = False):
-    input_path = os.getenv('DATASET_AFFECT_NET_PATH')
+    input_path = os.getenv("DATASET_AFFECT_NET_PATH")
     if not os.path.exists(input_path):
         raise typer.BadParameter("Dataset not found. Please set the DATASET_AFFECT_NET_PATH environment variable.")
 
@@ -148,7 +148,7 @@ def ensemble(data_path=os.getenv("DATASET_TEST_PATH")):
     model_ids = ENSEMBLE_MODELS
     ensemble_results_df = ensemble_results(model_ids, data_path)
 
-    top_n = accuracies(ensemble_results_df, best=3)
+    top_n = accuracies(ensemble_results_df)
     conf_matrix = confusion_matrix(ensemble_results_df)
     print(conf_matrix)
     print(top_n)
@@ -157,7 +157,6 @@ def ensemble(data_path=os.getenv("DATASET_TEST_PATH")):
 @app.command()
 def initialize_sweep(entity: str = "your_user_name", count: int = 40):
     project = "cvdl"
-    entity = "your_user_name"  # system ignores some user names -> input name here
 
     if entity == "your_user_name":
         raise ValueError("Please enter your user name.")
@@ -190,7 +189,7 @@ def get_activation(model_name: str, data_path: str = os.getenv("DATASET_TEST_PAT
         activation_values_dict[model_name][label].append(values)
 
     # save values locally as a json file (folder path from env file)
-    with open(f'{output_path}\\activation_values.json', 'w') as f:
+    with open(f"{output_path}\\activation_values.json", "w") as f:
         json.dump(activation_values_dict, f)
 
 

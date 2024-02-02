@@ -11,10 +11,10 @@ def get_model_results(model_ids, data_path=os.getenv("DATASET_TEST_PATH")):
     columns = None
     for model_id in model_ids:
         _, result_df = apply_model(model_id, data_path)
-        results.append(result_df.drop(columns=['file']).values.tolist())
-        paths = result_df['file'].tolist()
+        results.append(result_df.drop(columns=["file"]).values.tolist())
+        paths = result_df["file"].tolist()
         if columns is None:
-            columns = result_df.columns.drop('file')
+            columns = result_df.columns.drop("file")
 
     # Inner lists contain the results for one image over all models
     results = list(map(list, zip(*results)))
@@ -30,6 +30,6 @@ def ensemble_results(model_ids, data_path=os.getenv("DATASET_TEST_PATH")):
 
     # Accuracies and confusionmatrix expect a dataframe
     ensemble_results_df = pd.DataFrame(averaged_results, columns=columns)
-    ensemble_results_df.insert(0, 'path', paths)
+    ensemble_results_df.insert(0, "path", paths)
 
     return ensemble_results_df

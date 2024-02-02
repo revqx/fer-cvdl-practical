@@ -5,7 +5,7 @@ import cv2
 
 def clip_face(img):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    face_cascade = cv2.CascadeClassifier('cascades/haarcascade_frontalface_default.xml')
+    face_cascade = cv2.CascadeClassifier("cascades/haarcascade_frontalface_default.xml")
 
     faces = face_cascade.detectMultiScale(gray, scaleFactor=1.3, minNeighbors=5)
 

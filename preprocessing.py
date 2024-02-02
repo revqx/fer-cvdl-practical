@@ -3,7 +3,8 @@ from typing import Optional
 import torchvision.transforms as v2
 
 AVAILABLE_PREPROCESSINGS = {
-    "ImageNetNormalization": lambda: v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    "ImageNetNormalization": lambda: v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    "Grayscale": lambda: v2.Grayscale(num_output_channels=3)
 }
 
 
