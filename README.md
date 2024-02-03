@@ -8,7 +8,9 @@
 pip install -r requirements.txt
 ```
 
-2. Put the affectnet dataset into `./data/affectnet`, the fer2013 dataset into `./data/fer2013`, and the rafdb dataset into `./data/raf_db`. The given validation set should be put into `./data/test`. You can also change the paths in `.env` to your liking.
+2. Put the affectnet dataset into `./data/affectnet`, the fer2013 dataset into `./data/fer2013`, and the rafdb dataset
+   into `./data/raf_db`. The given validation set should be put into `./data/test`. You can also change the paths
+   in `.env` to your liking.
 
 ## Train
 
@@ -49,6 +51,7 @@ python main.py demo <model-identifier>
 ```
 
 Optional arguments:
+
 - `<save` save the demo, default is `False`
 - `<webcam>` use webcam as input, default is `False`
 - `cam-id` specify the webcam id, default is `0`
@@ -58,7 +61,6 @@ Optional arguments:
 - `<details>` show remarkable details of the face, default is `False`
 - `<info>` show information about the prediction, default is `True`
 - `<hog>` use HOG instead of haar cascade, not recommended for live demo, default is `False`
-
 
 ## Other utilities
 
@@ -70,7 +72,8 @@ python main.py clipped
 
 Optional Arguments:
 
-- `<output-dir>` directory to store the clipped faces, default is the path to the AffectNet dataset as specified in `.env`
+- `<output-dir>` directory to store the clipped faces, default is the path to the AffectNet dataset as specified
+  in `.env`
 - `<use-rafdb-format>` use the RAF-DB format for the output, default is `False`
 
 ### Creating an ensemble of models
