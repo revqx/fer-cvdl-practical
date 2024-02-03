@@ -40,7 +40,8 @@ def train_model(config: dict):
         model_id, model, preprocessing = load_model_and_preprocessing(config["pretrained_model"])
         config["model_name"] = model_id if config["model_name"] is None else config["model_name"]
     elif config["model_name"] != "":
-        model = get_model(config["model_name"])
+        model = get_model(config["model_name"], hidden_layers=config["DynamicModel_hidden_layers"],
+                          dropout=config["DynamicModel_hidden_dropout"])
     else:
         raise ValueError("Either 'pretrained_model' or 'model_name' must be specified.")
 
@@ -91,7 +92,7 @@ def training_loop(model, train_loader, val_loader, criterion, optimizer, schedul
         phases.append("val")
 
     for epoch in range(config["epochs"]):
-        wandb.log({"learning_rate": scheduler.get_last_lr()[0]}, step=epoch + 1)
+        wandb.log({"learning_rate": [group['lr'] for group in optimizer.param_groups]}, step=epoch + 1)
 
         # Dictionaries to store metrics for each phase
         metrics = {
@@ -153,7 +154,7 @@ def train_val_dataloaders(dataset, preprocessing, augmentations, validation_spli
     if validation_split < 0 or validation_split >= 1:
         raise ValueError(f"Invalid validation_split: {validation_split}. It should be in the range [0, 1).")
 
-    img_paths = [path for path, _ in dataset]
+    images = [img for img, _ in dataset]
     labels = [label for _, label in dataset]
 
     if sampler == "uniform":
@@ -179,13 +180,13 @@ def train_val_dataloaders(dataset, preprocessing, augmentations, validation_spli
 
     if validation_split == 0:
         # No validation set
-        train_dataset = DatasetWrapper(img_paths, labels, preprocessing, augmentations)
+        train_dataset = DatasetWrapper(images, labels, preprocessing, augmentations)
         train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
         return train_loader, None
 
     # Apply stratified train-test split on the original dataset
     train_data, val_data, train_labels, val_labels = train_test_split(
-        img_paths, labels, test_size=validation_split, stratify=labels)
+        images, labels, test_size=validation_split, stratify=labels)
 
     # Create augmented dataset instances for training and validation
     train_dataset = DatasetWrapper(train_data, train_labels, preprocessing, augmentations)

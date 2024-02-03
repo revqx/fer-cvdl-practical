@@ -3,10 +3,7 @@ import torch.nn.functional as F
 from torchvision import models
 
 
-def get_model(model_name, kwargs=None):
-    if kwargs is None:
-        kwargs = {}
-
+def get_model(model_name, **kwargs):
     if model_name not in MODELS:
         raise ValueError(f"Model not supported: {model_name}")
 
@@ -229,7 +226,56 @@ class CustomEmotionModel5(nn.Module):
         return x
 
 
+class DynamicModel(nn.Module):
+    def __init__(self, num_classes=6, hidden_layers=1, dropout=0.2):
+        super(DynamicModel, self).__init__()
+
+        self.conv_block1 = _create_conv_block(3, 64)
+        self.conv_block2 = _create_conv_block(64, 128)
+        self.conv_block3 = _create_conv_block(128, 256)
+        self.conv_block4 = _create_conv_block(256, 512, pool=False)
+
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.flatten = nn.Flatten()
+
+        self.hidden_layers = nn.ModuleList()
+
+        if hidden_layers > 0:
+            # first hidden layer has output size of last conv block
+            self.hidden_layers.append(nn.Linear(512, 256))
+
+            # dynamic number of hidden layers
+            for _ in range(hidden_layers - 1):
+                self.hidden_layers.append(nn.Linear(256 // 2 ** _, 256 // 2 ** (_ + 1)))
+
+            # define output layer depending on number of hidden layers
+            self.output = nn.Linear(256 // 2 ** (hidden_layers - 1), num_classes)
+
+            self.dropout = nn.Dropout(dropout)
+
+        else:
+            # define output layer in case of no hidden layers
+            self.output = nn.Linear(512, num_classes)
+
+    def forward(self, x):
+        x = self.conv_block1(x)
+        x = self.conv_block2(x)
+        x = self.conv_block3(x)
+        x = self.conv_block4(x)
+        x = self.avgpool(x)
+        x = self.flatten(x)
+
+        for linear in self.hidden_layers:
+            x = F.relu(linear(x))
+            x = self.dropout(x)
+
+        x = self.output(x)
+
+        return x
+
+
 MODELS = {
+    "DynamicModel": DynamicModel,
     "LeNet": LeNet,
     "ResNet18": ResNet18,
     "ResNet50": ResNet50,

@@ -98,7 +98,6 @@ class DatasetWrapper(Dataset):
         self.labels = labels
         self.augmentations = augmentations  # This will be a v2.Compose object
         self.preprocessing = preprocessing
-        # A few augmentations not supported by mps yet
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         # Adjusting the length based on the presence or absence of augmentations
         self.augmentation_factor = 1 if augmentations is None else (1 + len(self.augmentations))
@@ -124,6 +123,6 @@ class DatasetWrapper(Dataset):
         if idx != original_idx and self.augmentations:
             image = self.augmentations[(idx % self.augmentation_factor) - 1](image)
 
-        image = image.to(self.device) # please do not move this line infrot of the augmentations
+        image = image.to(self.device)  # please do not move this line infrot of the augmentations
 
         return image, label

@@ -10,7 +10,7 @@ from analyze import accuracies, confusion_matrix, analyze_run_and_upload
 from clip_affect_net import clip_affect_net_faces
 from ensemble import ensemble_results
 from inference import apply_model
-from sweeps import get_sweep_config, train_sweep
+from sweep import get_sweep_config
 from train import train_model
 from utils import label_from_path
 from video_prediction import make_video_prediction
@@ -18,43 +18,19 @@ from video_prediction import make_video_prediction
 load_dotenv()
 app = typer.Typer()
 
-# This should not be changed unless the current run is better than the current best
-# See CUSTOM_TRAIN_CONFIG for config options
-CURRENT_BEST_TRAIN_CONFIG = {
-    "model_name": "CustomEmotionModel3",
-    "model_description": "",
-    "pretrained_model": "",
-    "train_data": "RAF-DB",
-    "preprocessing": "ImageNetNormalization",
-    "augmentations": "HorizontalFlip, RandomRotation, RandomCrop, TrivialAugmentWide, TrivialAugmentWide",
-    "validation_split": 0.1,
-    "learning_rate": 0.001,
-    "epochs": 20,
-    "batch_size": 32,
-    "sampler": "uniform",
-    "scheduler": "ReduceLROnPlateau",
-    "ReduceLROnPlateau_factor": 0.1,
-    "ReduceLROnPlateau_patience": 5,
-    "StepLR_decay_rate": 0.95,
-    "loss_function": "CrossEntropyLoss",
-    "class_weight_adjustments": [1, 1, 1, 1, 1, 1],
-    "optimizer": "Adam",
-    "device": "mps"
-}
-
 # If you want to use a custom config, change this one as you like
-CUSTOM_TRAIN_CONFIG = {
+TRAIN_CONFIG = {
     "model_name": "CustomEmotionModel3",
     # Options: LeNet, ResNet{18, 50}, EmotionModel2, CustomEmotionModel{3, 4, 5}, MobileNetV2
     "model_description": "",
     "pretrained_model": "p28ita7r",  # Options: model_id, model_name (for better wandb logging, use the model id)
     "train_data": "RAF-DB",  # Options: AffectNet, RAF-DB
     "preprocessing": "ImageNetNormalization",  # Options: ImageNetNormalization, Grayscale
-    "augmentations": "HorizontalFlip, RandomRotation, RandomCrop, TrivialAugmentWide, TrivialAugmentWide",
+    "augmentations": "HorizontalFlip, RandomRotation, RandomCrop, RandAugment, RandAugment",
     # Options: "HorizontalFlip", "RandomRotation", "RandomCrop", "TrivialAugmentWide", "RandAugment"
-    "validation_split": 0.1,
+    "validation_split": 0.05,
     "learning_rate": 0.001,
-    "epochs": 2,
+    "epochs": 20,
     "batch_size": 32,
     "sampler": "uniform",  # Options: uniform
     "scheduler": "StepLR",  # Options: ReduceLROnPlateau, StepLR
@@ -62,9 +38,11 @@ CUSTOM_TRAIN_CONFIG = {
     "ReduceLROnPlateau_patience": 5,
     "StepLR_decay_rate": 0.95,
     "loss_function": "CrossEntropyLoss",  # Options: CrossEntropyLoss
-    "class_weight_adjustments": [1, 1, 1, 1, 1, 1],
+    "class_weight_adjustments": [1, 1, 1, 1, 1, 1],  # Only applied if scheduler is "uniform"
     "optimizer": "Adam",  # Options: Adam, SGD
-    "device": "mps"  # Options: cuda, cpu, mps
+    "device": "mps",  # Options: cuda, cpu, mps
+    "DynamicModel_hidden_layers": 1,
+    "DynamicModel_hidden_dropout": 0.2
 }
 
 # In case you want to create an ensemble model, add the model names/id here
@@ -73,8 +51,6 @@ ENSEMBLE_MODELS = ["h8txabjg", "odyx0ott", "8uu89woq"]
 
 @app.command()
 def train(offline: bool = False):
-    # merge default and custom config
-    config = CURRENT_BEST_TRAIN_CONFIG | CUSTOM_TRAIN_CONFIG
     # check if validation path is valid
     if not os.path.exists(os.getenv("DATASET_TEST_PATH")):
         raise FileNotFoundError(f"Directory {os.getenv('DATASET_TEST_PATH')} not found. "
@@ -82,11 +58,16 @@ def train(offline: bool = False):
 
     # disable wandb if offline
     os.environ["WANDB_MODE"] = "offline" if offline else "online"
-    wandb.init(project="cvdl", config=config)
-    train_model(config)
 
-    # test model on validation data
-    analyze_run_and_upload(config["model_name"])
+    config = TRAIN_CONFIG
+    with wandb.init(config=config, project="cvdl", entity=os.getenv("WANDB_ENTITY")):
+        # if sweep alters the train config, overwrite it with the altered values
+        for key in wandb.config.as_dict():
+            config[key] = wandb.config.as_dict().get(key)
+
+        train_model(config)
+        # test model and upload results to wandb
+        analyze_run_and_upload(config["model_name"])
 
 
 @app.command()
@@ -125,7 +106,7 @@ def demo(model_name: str, record: bool = False, webcam: bool = False, input_file
 
 
 @app.command()
-def clipped(output_dir: str = "data/clipped_affect_net", use_rafdb_format: bool = False):
+def clip(output_dir: str = "data/clipped_affect_net", use_rafdb_format: bool = False):
     input_path = os.getenv("DATASET_AFFECT_NET_PATH")
     if not os.path.exists(input_path):
         raise typer.BadParameter("Dataset not found. Please set the DATASET_AFFECT_NET_PATH environment variable.")
@@ -155,16 +136,14 @@ def ensemble(data_path=os.getenv("DATASET_TEST_PATH")):
 
 
 @app.command()
-def initialize_sweep(entity: str = "your_user_name", count: int = 40):
-    project = "cvdl"
-
-    if entity == "your_user_name":
-        raise ValueError("Please enter your user name.")
-
+def sweep(sweep_id: str = "", count: int = 40):
     sweep_config = get_sweep_config()
+    entity = os.getenv("WANDB_ENTITY")
 
-    sweep_id = wandb.sweep(sweep_config, project=project, entity=entity)
-    wandb.agent(sweep_id, function=train_sweep, count=count)
+    if sweep_id == "":
+        sweep_id = wandb.sweep(sweep_config, project="cvdl", entity=entity)
+
+    wandb.agent(sweep_id, function=train, project="cvdl", count=count, entity=entity)
 
 
 @app.command()
