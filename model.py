@@ -11,7 +11,7 @@ def get_model(model_name, **kwargs):
 
 
 class LeNet(nn.Module):
-    def __init__(self, num_classes=6, input_size=64):
+    def __init__(self, num_classes=6, input_size=64, **kwargs):
         super(LeNet, self).__init__()
         self.input_size = input_size
         self.conv1 = nn.Conv2d(3, 6, kernel_size=5, stride=1, padding=0)
@@ -43,7 +43,7 @@ class LeNet(nn.Module):
 
 
 class ResNet18(nn.Module):
-    def __init__(self, num_classes=6, input_size=64):
+    def __init__(self, num_classes=6, input_size=64, **kwargs):
         super(ResNet18, self).__init__()
         self.input_size = input_size
         self.model = models.resnet18(weights="IMAGENET1K_V1")
@@ -55,7 +55,7 @@ class ResNet18(nn.Module):
 
 
 class ResNet50(nn.Module):
-    def __init__(self, num_classes=6, input_size=64):
+    def __init__(self, num_classes=6, input_size=64, **kwargs):
         super(ResNet50, self).__init__()
         self.input_size = input_size
         self.model = models.resnet50(weights="IMAGENET1K_V1")
@@ -79,7 +79,7 @@ class MobileNetV2(nn.Module):
 
 
 class EmotionModel(nn.Module):
-    def __init__(self, num_classes=6):
+    def __init__(self, num_classes=6, **kwargs):
         super(EmotionModel, self).__init__()
 
         self.conv_block1 = _create_conv_block(3, 64)
@@ -139,7 +139,7 @@ def _create_conv_block_2(in_channels, out_channels, pool=True):
 
 
 class CustomEmotionModel3(nn.Module):
-    def __init__(self, num_classes=6):
+    def __init__(self, num_classes=6, **kwargs):
         super(CustomEmotionModel3, self).__init__()
 
         self.conv_block1 = _create_conv_block(3, 64)
@@ -170,7 +170,7 @@ class CustomEmotionModel3(nn.Module):
 
 
 class CustomEmotionModel4(nn.Module):
-    def __init__(self, num_classes=6):
+    def __init__(self, num_classes=6, **kwargs):
         super(CustomEmotionModel4, self).__init__()
 
         self.conv_block1 = _create_conv_block(3, 64)
@@ -197,7 +197,7 @@ class CustomEmotionModel4(nn.Module):
 
 
 class CustomEmotionModel5(nn.Module):
-    def __init__(self, num_classes=6):
+    def __init__(self, num_classes=6, **kwargs):
         super(CustomEmotionModel5, self).__init__()
 
         self.conv_block1 = _create_conv_block(3, 64)
@@ -227,7 +227,7 @@ class CustomEmotionModel5(nn.Module):
 
 
 class DynamicModel(nn.Module):
-    def __init__(self, num_classes=6, hidden_layers=1, dropout=0.2):
+    def __init__(self, num_classes=6, hidden_layers=1, dropout=0.2, **kwargs):
         super(DynamicModel, self).__init__()
 
         self.conv_block1 = _create_conv_block(3, 64)

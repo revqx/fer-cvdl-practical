@@ -23,7 +23,7 @@ TRAIN_CONFIG = {
     "model_name": "CustomEmotionModel3",
     # Options: LeNet, ResNet{18, 50}, EmotionModel2, CustomEmotionModel{3, 4, 5}, MobileNetV2
     "model_description": "",
-    "pretrained_model": "p28ita7r",  # Options: model_id, model_name (for better wandb logging, use the model id)
+    "pretrained_model": "",  # Options: model_id, model_name (for better wandb logging, use the model id)
     "train_data": "RAF-DB",  # Options: AffectNet, RAF-DB
     "preprocessing": "ImageNetNormalization",  # Options: ImageNetNormalization, Grayscale
     "augmentations": "HorizontalFlip, RandomRotation, RandomCrop, RandAugment, RandAugment",

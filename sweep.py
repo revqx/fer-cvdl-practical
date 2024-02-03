@@ -1,5 +1,5 @@
 def get_sweep_config(metric="val_loss", goal="minimize", method="random",
-                     custom_model=True, early_terminate=False):
+                     custom_model=False, early_terminate=False):
     sweep_config = {
         "method": method
     }
