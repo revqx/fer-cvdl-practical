@@ -13,7 +13,7 @@ def get_sweep_config(metric="val_loss", goal="minimize", method="random",
     # parameters to sweep over (dropout not possible atm because models need custom input for dropout)
     parameters_dict = {
         "optimizer": {
-            "values": ["Adam", "SGD"]
+            "values": ["Adam"]  # options: Adam, SGD
         },
         "dataset": {
             "values": ["RAF-DB"]  # options: AffectNet, RAF-DB
@@ -22,7 +22,7 @@ def get_sweep_config(metric="val_loss", goal="minimize", method="random",
             "values": [16, 24, 32]  # defined here since log distribution causes bad comparability
         },
         "validation_split": {
-            "values": [0.1, 0.2]  # once sweeped to be set as constant
+            "values": [0.2]  # once sweeped to be set as constant
         },
         "weak_class_adjust": {
             "value": [1, 1, 1, 1, 1, 1]  # can be set to True and weights have to be adjusted in get_sweep_loader
@@ -47,7 +47,7 @@ def get_sweep_config(metric="val_loss", goal="minimize", method="random",
     else:
         parameters_dict.update({
             "model_name": {
-                "values": ["CustomEmotionModel3, ResNet50"]
+                "values": ["CustomEmotionModel3"]
             }  # options: EmotionModel_2, CustomEmotionModel3, LeNet, ResNet18
         })
         sweep_config["parameters"] = parameters_dict
@@ -64,10 +64,10 @@ def get_sweep_config(metric="val_loss", goal="minimize", method="random",
                 # a flat distribution between 0 and 0.1
                 "distribution": "uniform",
                 "min": 0.0001,
-                "max": 0.1
+                "max": 0.001
             },
             "epochs": {
-                "value": 3  # adjust to your liking (3 gives more accurate results than 1)
+                "value": 5  # adjust to your liking (3 gives more accurate results than 1)
             }
         })
     sweep_config["parameters"] = parameters_dict

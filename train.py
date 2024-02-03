@@ -92,7 +92,7 @@ def training_loop(model, train_loader, val_loader, criterion, optimizer, schedul
         phases.append("val")
 
     for epoch in range(config["epochs"]):
-        wandb.log({"learning_rate": [group['lr'] for group in optimizer.param_groups]}, step=epoch + 1)
+        wandb.log({"learning_rate": [group['lr'] for group in optimizer.param_groups][0]}, step=epoch + 1)
 
         # Dictionaries to store metrics for each phase
         metrics = {
