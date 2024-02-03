@@ -112,7 +112,6 @@ class DatasetWrapper(Dataset):
             raise IndexError(f"Index {idx} out of range")
 
         image = self.images[original_idx]
-        image = image.to(self.device)
         label = self.labels[original_idx]
 
         # Preprocess the image
@@ -122,5 +121,7 @@ class DatasetWrapper(Dataset):
         # Apply augmentation if it's not the original image and augmentations are provided
         if idx != original_idx and self.augmentations:
             image = self.augmentations[(idx % self.augmentation_factor) - 1](image)
+
+        image = image.to(self.device) # please do not move this line infrot of the augmentations
 
         return image, label
