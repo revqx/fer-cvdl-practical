@@ -176,7 +176,7 @@ def train_val_dataloaders(dataset, preprocessing, augmentations, validation_spli
         sampler = WeightedRandomSampler(weights, len(weights))
         loader = DataLoader(dataset, batch_size=len(dataset), sampler=sampler)
 
-        img_paths, labels = next(iter(loader))
+        images, labels = next(iter(loader))
 
     if validation_split == 0:
         # No validation set
