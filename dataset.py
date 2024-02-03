@@ -1,4 +1,5 @@
 import os
+from functools import lru_cache
 
 import pandas as pd
 import torch
@@ -105,6 +106,7 @@ class DatasetWrapper(Dataset):
     def __len__(self):
         return len(self.images) * self.augmentation_factor
 
+    @lru_cache(maxsize=1_000_000)
     def __getitem__(self, idx):
         original_idx = idx // self.augmentation_factor
 
