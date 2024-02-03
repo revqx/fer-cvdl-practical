@@ -26,14 +26,14 @@ TRAIN_CONFIG = {
     "pretrained_model": "",  # Options: model_id, model_name (for better wandb logging, use the model id)
     "train_data": "RAF-DB",  # Options: AffectNet, RAF-DB
     "preprocessing": "ImageNetNormalization",  # Options: ImageNetNormalization, Grayscale
-    "augmentations": "HorizontalFlip, RandomRotation, RandomCrop, RandAugment, RandAugment",
+    "augmentations": "HorizontalFlip, RandomRotation, RandomCrop, TrivialAugmentWide, TrivialAugmentWide",
     # Options: "HorizontalFlip", "RandomRotation", "RandomCrop", "TrivialAugmentWide", "RandAugment"
     "validation_split": 0.05,
     "learning_rate": 0.001,
     "epochs": 20,
     "batch_size": 32,
     "sampler": "uniform",  # Options: uniform
-    "scheduler": "StepLR",  # Options: ReduceLROnPlateau, StepLR
+    "scheduler": "ReduceLROnPlateau",  # Options: ReduceLROnPlateau, StepLR
     "ReduceLROnPlateau_factor": 0.1,
     "ReduceLROnPlateau_patience": 5,
     "StepLR_decay_rate": 0.95,
