@@ -66,7 +66,7 @@ def get_sweep_config(metric="val_loss", goal="minimize", method="bayes",
         parameters_dict.update({
             "learning_rate": {
                 # a flat distribution between 0 and 0.1
-                "values": [0.001, 0.01]
+                "values": [0.001, 0.0001]
             },
             "epochs": {
                 "values": [15, 20, 25]
