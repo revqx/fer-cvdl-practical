@@ -129,6 +129,8 @@ def training_loop(model, train_loader, val_loader, criterion, optimizer, schedul
                     if phase == "train":
                         loss.backward()
                         optimizer.step()
+                
+                torch.cuda.empty_cache()
 
                 running_loss += loss.item() * inputs.size(0)
                 running_corrects += torch.sum(preds == labels.data)
