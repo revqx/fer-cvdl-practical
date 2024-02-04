@@ -1,4 +1,4 @@
-def get_sweep_config(metric="val_loss", goal="minimize", method="random",
+def get_sweep_config(metric="val_loss", goal="minimize", method="bayes",
                      custom_model=False, early_terminate=False):
     sweep_config = {
         "method": method
@@ -19,13 +19,23 @@ def get_sweep_config(metric="val_loss", goal="minimize", method="random",
             "values": ["RAF-DB"]  # options: AffectNet, RAF-DB
         },
         "batch_size": {
-            "values": [16, 24, 32]  # defined here since log distribution causes bad comparability
+            "values": [24, 32]  # defined here since log distribution causes bad comparability
         },
         "validation_split": {
             "values": [0.2]  # once sweeped to be set as constant
         },
         "weak_class_adjust": {
             "value": [1, 1, 1, 1, 1, 1]  # can be set to True and weights have to be adjusted in get_sweep_loader
+        },
+        "ReduceLROnPlateau_patience": {
+            "values": [2, 4, 8]
+        },
+        "augmentations": {
+            "values": [
+                "HorizontalFlip, RandomRotation, RandomCrop, TrivialAugmentWide, TrivialAugmentWide",
+                "HorizontalFlip, RandomRotation, RandomCrop, RandAugment, RandAugment",
+                "HorizontalFlip, RandomRotation, RandomCrop, TrivialAugmentWide, RandAugment",
+            ]
         }
     }
 
@@ -52,10 +62,14 @@ def get_sweep_config(metric="val_loss", goal="minimize", method="random",
         })
         sweep_config["parameters"] = parameters_dict
 
-    if sweep_config["method"] == "grid":
+    if sweep_config["method"] == "grid" or sweep_config["method"] == "bayes":
         parameters_dict.update({
+            "learning_rate": {
+                # a flat distribution between 0 and 0.1
+                "values": [0.001, 0.01]
+            },
             "epochs": {
-                "value": 10
+                "values": [15, 20, 25]
             }
         })
     else:
@@ -67,7 +81,7 @@ def get_sweep_config(metric="val_loss", goal="minimize", method="random",
                 "max": 0.001
             },
             "epochs": {
-                "value": 5  # adjust to your liking (3 gives more accurate results than 1)
+                "values": [5]  # adjust to your liking (3 gives more accurate results than 1)
             }
         })
     sweep_config["parameters"] = parameters_dict

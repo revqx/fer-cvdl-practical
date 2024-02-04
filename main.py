@@ -28,7 +28,7 @@ TRAIN_CONFIG = {
     "preprocessing": "ImageNetNormalization",  # Options: ImageNetNormalization, Grayscale
     "augmentations": "HorizontalFlip, RandomRotation, RandomCrop, TrivialAugmentWide, TrivialAugmentWide",
     # Options: "HorizontalFlip", "RandomRotation", "RandomCrop", "TrivialAugmentWide", "RandAugment"
-    "validation_split": 0.05,
+    "validation_split": 0.1,
     "learning_rate": 0.001,
     "epochs": 20,
     "batch_size": 32,
@@ -50,7 +50,7 @@ ENSEMBLE_MODELS = ["h8txabjg", "odyx0ott", "8uu89woq"]
 
 
 @app.command()
-def train(offline: bool = False):
+def train(offline: bool = False, sweep: bool = False):
     # check if validation path is valid
     if not os.path.exists(os.getenv("DATASET_TEST_PATH")):
         raise FileNotFoundError(f"Directory {os.getenv('DATASET_TEST_PATH')} not found. "
@@ -61,13 +61,16 @@ def train(offline: bool = False):
 
     config = TRAIN_CONFIG
     with wandb.init(config=config, project="cvdl", entity=os.getenv("WANDB_ENTITY")):
-        # if sweep alters the train config, overwrite it with the altered values
-        for key in wandb.config.as_dict():
-            config[key] = wandb.config.as_dict().get(key)
+        # overwrite config with wandb config if sweep run
+        if sweep:
+            for key in wandb.config.as_dict():
+                config[key] = wandb.config.as_dict().get(key)
 
         train_model(config)
-        # test model and upload results to wandb
-        analyze_run_and_upload(config["model_name"])
+
+        # test model and upload results to wandb if not a sweep run
+        if not sweep:
+            analyze_run_and_upload(config["model_name"])
 
 
 @app.command()
@@ -143,7 +146,7 @@ def sweep(sweep_id: str = "", count: int = 40):
     if sweep_id == "":
         sweep_id = wandb.sweep(sweep_config, project="cvdl", entity=entity)
 
-    wandb.agent(sweep_id, function=train, project="cvdl", count=count, entity=entity)
+    wandb.agent(sweep_id, function=lambda: train(sweep=True), project="cvdl", count=count, entity=entity)
 
 
 @app.command()
