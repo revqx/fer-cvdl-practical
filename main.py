@@ -18,24 +18,23 @@ from video_prediction import make_video_prediction
 load_dotenv()
 app = typer.Typer()
 
-# If you want to use a custom config, change this one as you like
 TRAIN_CONFIG = {
-    "model_name": "CustomEmotionModel3",
+    "model_name": "CustomEmotionModel6",
     # Options: LeNet, ResNet{18, 50}, EmotionModel2, CustomEmotionModel{3, 4, 5}, MobileNetV2
     "model_description": "",
     "pretrained_model": "",  # Options: model_id, model_name (for better wandb logging, use the model id)
-    "train_data": "RAF-DB",  # Options: AffectNet, RAF-DB
+    "train_data": "AffectNet",  # Options: RAF-DB, AffectNet
     "preprocessing": "ImageNetNormalization",  # Options: ImageNetNormalization, Grayscale
     "augmentations": "HorizontalFlip, RandomRotation, RandomCrop, TrivialAugmentWide, TrivialAugmentWide",
     # Options: "HorizontalFlip", "RandomRotation", "RandomCrop", "TrivialAugmentWide", "RandAugment"
     "validation_split": 0.1,
     "learning_rate": 0.001,
-    "epochs": 20,
+    "epochs": 15,
     "batch_size": 32,
     "sampler": "uniform",  # Options: uniform
     "scheduler": "ReduceLROnPlateau",  # Options: ReduceLROnPlateau, StepLR
     "ReduceLROnPlateau_factor": 0.1,
-    "ReduceLROnPlateau_patience": 5,
+    "ReduceLROnPlateau_patience": 2,
     "StepLR_decay_rate": 0.95,
     "loss_function": "CrossEntropyLoss",  # Options: CrossEntropyLoss
     "class_weight_adjustments": [1, 1, 1, 1, 1, 1],  # Only applied if scheduler is "uniform"
@@ -66,7 +65,10 @@ def train(offline: bool = False, sweep: bool = False):
             for key in wandb.config.as_dict():
                 config[key] = wandb.config.as_dict().get(key)
 
-        train_model(config)
+        model = train_model(config)
+        print(f"Number of parameters: {sum(p.numel() for p in model.parameters())}"
+              f" (Trainable: {sum(p.numel() for p in model.parameters() if p.requires_grad)})")
+        # print(model.summary())
 
         # test model and upload results to wandb if not a sweep run
         if not sweep:

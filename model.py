@@ -67,7 +67,7 @@ class ResNet50(nn.Module):
 
 
 class MobileNetV2(nn.Module):
-    def __init__(self, num_classes=6, input_size=64):
+    def __init__(self, num_classes=6, input_size=64, **kwargs):
         super(MobileNetV2, self).__init__()
         self.input_size = input_size
         self.model = models.mobilenet_v2(weights="IMAGENET1K_V1")
@@ -226,6 +226,29 @@ class CustomEmotionModel5(nn.Module):
         return x
 
 
+class CustomEmotionModel7(nn.Module):
+    def __init__(self, num_classes=6, **kwargs):
+        super(CustomEmotionModel7, self).__init__()
+
+        self.conv_block1 = _create_conv_block(3, 64)
+        self.conv_block2 = _create_conv_block_2(64, 96)
+        self.conv_block3 = _create_conv_block_2(96, 128, pool=False)
+
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.flatten = nn.Flatten()
+        self.fc1 = nn.Linear(128, num_classes)
+
+    def forward(self, x):
+        x = self.conv_block1(x)
+        x = self.conv_block2(x)
+        x = self.conv_block3(x)
+        x = self.avgpool(x)
+        x = self.flatten(x)
+        x = self.fc1(x)
+
+        return x
+
+
 class DynamicModel(nn.Module):
     def __init__(self, num_classes=6, hidden_layers=1, dropout=0.2, **kwargs):
         super(DynamicModel, self).__init__()
@@ -283,5 +306,6 @@ MODELS = {
     "CustomEmotionModel3": CustomEmotionModel3,
     "CustomEmotionModel4": CustomEmotionModel4,
     "CustomEmotionModel5": CustomEmotionModel5,
+    "CustomEmotionModel6": CustomEmotionModel7,
     "MobileNetV2": MobileNetV2
 }

@@ -84,6 +84,8 @@ def train_model(config: dict):
     torch.save({"model": model.state_dict(), "preprocessing": preprocessing}, model_save_path)
     print(f"Saved the model to {model_save_path}.")
 
+    return model
+
 
 def training_loop(model, train_loader, val_loader, criterion, optimizer, scheduler, config):
     # Define the phases for which to run the training loop
@@ -151,6 +153,20 @@ def training_loop(model, train_loader, val_loader, criterion, optimizer, schedul
         wandb.log(metrics, step=epoch + 1)
 
 
+def get_weighted_sampler(labels, class_weight_adjustments=None):
+    class_counts = np.bincount(labels)
+    class_weights = 1. / class_counts
+
+    if class_weight_adjustments is not None:
+        if len(class_weight_adjustments) != len(class_weights):
+            raise ValueError(f"Invalid class_weight_adjustments. Expected length: {len(class_weights)}")
+
+        class_weights *= class_weight_adjustments
+
+    weights = class_weights[labels]
+    return WeightedRandomSampler(weights, len(weights))
+
+
 def train_val_dataloaders(dataset, preprocessing, augmentations, validation_split, batch_size, sampler=None,
                           class_weight_adjustments=None):
     if validation_split < 0 or validation_split >= 1:
@@ -159,44 +175,36 @@ def train_val_dataloaders(dataset, preprocessing, augmentations, validation_spli
     images = [img for img, _ in dataset]
     labels = [label for _, label in dataset]
 
-    if sampler == "uniform":
-        # Calculate class weights for balancing
-        class_counts = np.bincount(labels)
-        class_weights = 1. / class_counts
-
-        if class_weight_adjustments is not None:
-            # Ensure the adjustments array has the same length as the number of classes
-            num_classes = len(class_weights)
-            if len(class_weight_adjustments) != num_classes:
-                raise ValueError(f"Invalid class_weight_adjustments: {class_weight_adjustments}. It should contain "
-                                 f"{num_classes} elements in the same order as LABEL_TO_STR is defined in utils.py.")
-
-            # Apply the weight adjustments
-            class_weights *= class_weight_adjustments
-
-        weights = class_weights[labels]
-        sampler = WeightedRandomSampler(weights, len(weights))
-        loader = DataLoader(dataset, batch_size=len(dataset), sampler=sampler)
-
-        images, labels = next(iter(loader))
-
-    if validation_split == 0:
-        # No validation set
-        train_dataset = DatasetWrapper(images, labels, preprocessing, augmentations)
-        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-        return train_loader, None
-
-    # Apply stratified train-test split on the original dataset
-    train_data, val_data, train_labels, val_labels = train_test_split(
+    # Stratified train-test split
+    train_images, val_images, train_labels, val_labels = train_test_split(
         images, labels, test_size=validation_split, stratify=labels)
 
-    # Create augmented dataset instances for training and validation
-    train_dataset = DatasetWrapper(train_data, train_labels, preprocessing, augmentations)
-    # No augmentations for validation
-    val_dataset = DatasetWrapper(val_data, val_labels, preprocessing)
+    print(f"Prior train distribution (Σ: {len(train_images)}): {np.bincount(train_labels)}")
+    print(f"Prior val distribution (Σ: {len(val_images)}): {np.bincount(val_labels)}")
+
+    print("Applying augmentations to the train set...") if augmentations != [] else None
+
+    # Create datasets
+    train_dataset = DatasetWrapper(train_images, train_labels, preprocessing, augmentations)
+    val_dataset = DatasetWrapper(val_images, val_labels, preprocessing)
+
+    train_sampler = val_sampler = None
+    if sampler == "uniform":
+        augmented_train_labels = [label for _, label in train_dataset]
+        print("Oversampling train and val datasets to balance class distribution...")
+        train_sampler = get_weighted_sampler(augmented_train_labels, class_weight_adjustments)
+        val_sampler = get_weighted_sampler(val_labels, class_weight_adjustments)
 
     # Create data loaders
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, sampler=train_sampler,
+                              shuffle=train_sampler is None)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, sampler=val_sampler, shuffle=val_sampler is None)
+
+    print(f"Updated train distribution (Σ: {len(train_sampler)}): "
+          f"{np.bincount(np.concatenate([labels.numpy() for _, labels in train_loader]))}") \
+        if augmentations != [] or sampler == "uniform" else None
+    print(f"Updated val distribution (Σ: {len(val_sampler)}): "
+          f"{np.bincount(np.concatenate([labels.numpy() for _, labels in val_loader]))}") \
+        if augmentations != [] or sampler == "uniform" else None
 
     return train_loader, val_loader
