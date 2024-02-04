@@ -14,7 +14,6 @@ from sweep import get_sweep_config
 from train import train_model
 from utils import label_from_path
 from video_prediction import make_video_prediction
-from distributions import  get_distributions_2, kl_inference_2, calculate_top_n_accuracies_kl, generate_confusion_matrix, get_unique_distributions
 
 load_dotenv()
 app = typer.Typer()
@@ -22,12 +21,11 @@ app = typer.Typer()
 # If you want to use a custom config, change this one as you like
 TRAIN_CONFIG = {
     "model_name": "CustomEmotionModel3",
-    # Options: LeNet, ResNet_{18, 50}, EmotionModel_2, CustomEmotionModel{3, 4, 5}, MobileNetV2
+    # Options: LeNet, ResNet{18, 50}, EmotionModel2, CustomEmotionModel{3, 4, 5}, MobileNetV2
     "model_description": "",
     "pretrained_model": "",  # Options: model_id, model_name (for better wandb logging, use the model id)
     "train_data": "RAF-DB",  # Options: AffectNet, RAF-DB
     "preprocessing": "ImageNetNormalization",  # Options: ImageNetNormalization, Grayscale
-    "augmentations": "HorizontalFlip, RandomRotation, RandomCrop, TrivialAugmentWide, TrivialAugmentWide",
     "augmentations": "HorizontalFlip, RandomRotation, RandomCrop, TrivialAugmentWide, TrivialAugmentWide",
     # Options: "HorizontalFlip", "RandomRotation", "RandomCrop", "TrivialAugmentWide", "RandAugment"
     "validation_split": 0.1,
@@ -36,20 +34,19 @@ TRAIN_CONFIG = {
     "batch_size": 32,
     "sampler": "uniform",  # Options: uniform
     "scheduler": "ReduceLROnPlateau",  # Options: ReduceLROnPlateau, StepLR
-    "scheduler": "ReduceLROnPlateau",  # Options: ReduceLROnPlateau, StepLR
     "ReduceLROnPlateau_factor": 0.1,
-    "ReduceLROnPlateau_patience": 2,
-    "InverseTimeDecay_decay_rate": 0.05,
+    "ReduceLROnPlateau_patience": 5,
+    "StepLR_decay_rate": 0.95,
     "loss_function": "CrossEntropyLoss",  # Options: CrossEntropyLoss
     "class_weight_adjustments": [1, 1, 1, 1, 1, 1],  # Only applied if scheduler is "uniform"
     "optimizer": "Adam",  # Options: Adam, SGD
-    "device": "cuda:0",  # Options: cuda, cpu, mps
+    "device": "mps",  # Options: cuda, cpu, mps
     "DynamicModel_hidden_layers": 1,
     "DynamicModel_hidden_dropout": 0.2
 }
 
 # In case you want to create an ensemble model, add the model names/id here
-ENSEMBLE_MODELS = ["zpwmo75q", "npl99ug4", "h1zooiju", "1p4v64b3", "1eq7h5pb"]
+ENSEMBLE_MODELS = ["h8txabjg", "odyx0ott", "8uu89woq"]
 
 
 @app.command()
@@ -142,7 +139,7 @@ def ensemble(data_path=os.getenv("DATASET_TEST_PATH")):
 
 
 @app.command()
-def sweep(sweep_id: str = "uooa0hhq", count: int = 20):
+def sweep(sweep_id: str = "", count: int = 40):
     sweep_config = get_sweep_config()
     entity = os.getenv("WANDB_ENTITY")
 
@@ -153,24 +150,29 @@ def sweep(sweep_id: str = "uooa0hhq", count: int = 20):
 
 
 @app.command()
-def activation_values(model_name: str, data_path: str = os.getenv("DATASET_RAF_DB_PATH")):
-    
-    output_path = os.getenv("ACTIVATION_VALUES_PATH")
-    #correlations_dict, combined_distributions_dict, activation_values_dict = get_distributions_2(model_name, data_path, output_path)
+def get_activation(model_name: str, data_path: str = os.getenv("DATASET_TEST_PATH"),
+                   output_path: str = os.getenv("ACTIVATION_VALUES_PATH")):
+    model_id, results = apply_model(model_name, data_path)
+    labels = []
+    activation_values_dict = {}
 
-    plot_path = os.getenv("ACTIVATION_VALUES_PLOT_PATH")
-    #get_all_plots(combined_distributions_dict, correlations_dict, activation_values_dict, plot_path)
-    distributions_dict = get_distributions_2(model_name, data_path, output_path)
+    for path, *values in results.values:
+        label = label_from_path(path)
+        labels.append(label)
+        if label is None:
+            raise ValueError(f"Could not find label in path {path}.")
 
+        if model_name not in activation_values_dict:
+            activation_values_dict[model_name] = {}
 
-@app.command()
-def kl_divergence(model_name: str, data_path: str = os.getenv("DATASET_VALIDATION_PATH")):
-    #output_path = os.getenv("KL_DIVERGENCE_PATH")
-    kl_results, labels = kl_inference_2(model_name, data_path)
-    top_1, top_3, pred_labels = calculate_top_n_accuracies_kl(kl_results, labels)
-    conf_matrix = generate_confusion_matrix(labels, pred_labels)
-    print(conf_matrix)
-    print("Top 1 accuracy: ", top_1, "Top 3 accuracy: ", top_3)
+        if label not in activation_values_dict[model_name]:
+            activation_values_dict[model_name][label] = []
+
+        activation_values_dict[model_name][label].append(values)
+
+    # save values locally as a json file (folder path from env file)
+    with open(f"{output_path}\\activation_values.json", "w") as f:
+        json.dump(activation_values_dict, f)
 
 
 if __name__ == "__main__":

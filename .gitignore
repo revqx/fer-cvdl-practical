@@ -7,4 +7,3 @@ models/*
 wandb/*
 data/*
 cascades/*
-activation_values/*

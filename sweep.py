@@ -13,7 +13,7 @@ def get_sweep_config(metric="val_loss", goal="minimize", method="bayes",
     # parameters to sweep over (dropout not possible atm because models need custom input for dropout)
     parameters_dict = {
         "optimizer": {
-            "values": ["SGD"]  # options: Adam, SGD
+            "values": ["Adam"]  # options: Adam, SGD
         },
         "dataset": {
             "values": ["RAF-DB"]  # options: AffectNet, RAF-DB
@@ -77,8 +77,8 @@ def get_sweep_config(metric="val_loss", goal="minimize", method="bayes",
             "learning_rate": {
                 # a flat distribution between 0 and 0.1
                 "distribution": "uniform",
-                "min": 0.01,
-                "max": 0.1
+                "min": 0.0001,
+                "max": 0.001
             },
             "epochs": {
                 "values": [5]  # adjust to your liking (3 gives more accurate results than 1)

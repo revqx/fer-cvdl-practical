@@ -126,4 +126,3 @@ class DatasetWrapper(Dataset):
         image = image.to(self.device)  # please do not move this line infrot of the augmentations
 
         return image, label
-    
