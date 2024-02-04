@@ -69,7 +69,7 @@ def get_sweep_config(metric="val_loss", goal="minimize", method="bayes",
                 "values": [0.001, 0.0001]
             },
             "epochs": {
-                "values": [15, 20, 25]
+                "values": [10, 15, 20]
             }
         })
     else:
