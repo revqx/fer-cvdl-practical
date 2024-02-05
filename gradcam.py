@@ -222,5 +222,4 @@ def overlay(image: np.array, model):
 GRAD_MODELS = {
     "LeNet": LeNetGrad,
     "CustomEmotionModel3": CustomEmotionModel3Grad,
-    "CustomEmotionModel7": CustomEmotionModel7Grad,
 }
