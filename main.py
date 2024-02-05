@@ -1,4 +1,3 @@
-import json
 import os
 from datetime import datetime
 import json
@@ -8,8 +7,8 @@ import typer
 import wandb
 from dotenv import load_dotenv
 
+from guidedbackprop import guided_backprop
 from explain import pca_graph
-from utils import label_from_path
 
 from gradcam import grad_cam
 from analyze import accuracies, confusion_matrix, analyze_run_and_upload
@@ -207,16 +206,23 @@ def get_activation(model_name: str, data_path: str = os.getenv("DATASET_TEST_PAT
 
 
 @app.command()
-def explain(model_name: str, data_path: str = os.getenv("DATASET_VALIDATION_PATH"), examples: int = 5,
+def explain(model_name: str, data_path: str = os.getenv("DATASET_TEST_PATH"), examples: int = 5,
             random: bool = True, path_contains: str = "", save_path: str = None):
     model_id, model, preprocessing = load_model_and_preprocessing(model_name)
     grad_cam(model, data_path, examples=examples, random=random, path_contains=path_contains, save_path=save_path)
 
 
 @app.command()
-def pca(model_name: str, data_path: str = os.getenv("DATASET_VALIDATION_PATH"), softmax: bool = False):
+def pca(model_name: str, data_path: str = os.getenv("DATASET_TEST_PATH"), softmax: bool = False):
     model_id, results = apply_model(model_name, data_path)
     pca_graph(model_id, results, softmax=softmax)
+
+
+@app.command()
+def backprop(model_name: str, data_path: str = os.getenv("DATASET_TEST_PATH"), examples: int = 5,
+             random: bool = True, path_contains: str = "", save_path: str = None):
+    model_id, model, preprocessing = load_model_and_preprocessing(model_name)
+    guided_backprop(model, data_path, examples=examples, random=random, path_contains=path_contains, save_path=save_path)
 
 
 if __name__ == "__main__":

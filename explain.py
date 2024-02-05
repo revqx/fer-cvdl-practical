@@ -5,6 +5,21 @@ from sklearn.decomposition import PCA
 
 from utils import LABEL_TO_STR
 
+"""
+very hard pictures:
+- img326_happiness -> none
+- img232_disgust -> none
+- img460_sadness -> hand in face
+- img563_anger -> neutral
+interesting pictures:
+- img048_suprise -> sadness
+- img190_fear -> surprise
+- img240_disgust -> anger
+- img372_happiness -> surprise
+- img377_happiness -> disgust
+- img585_anger -> fear
+"""
+
 
 def pca_graph(model_id, inference_results: pd.DataFrame, softmax=False):
     # apply softmax on rows without the file name

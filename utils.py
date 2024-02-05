@@ -115,7 +115,10 @@ def load_model_and_preprocessing(model_name: str) -> (str, torch.nn.Module, torc
     loaded_model.load_state_dict(loaded_model_dict["model"])
     loaded_preprocessing = loaded_model_dict["preprocessing"]
 
-    print(f"Loaded model from {selected_model_path}")
+    # count number of parameter in flattened loaded_model_dict['model']
+    num_params = sum(p.numel() for p in loaded_model.parameters())
+
+    print(f"Loaded model from {selected_model_path} with {num_params} parameters.")
     return model_id, loaded_model, loaded_preprocessing
 
 
@@ -132,7 +135,7 @@ def get_available_models():
 def get_images_and_labels(path: str, limit=None, random=False, path_contains=None) -> ([torch.Tensor], [int]):
     """Load all images and labels from the given path.
        Returns a tuple of lists containing the images and labels."""
-    images = load_images(path)
+    images = load_images([path])
     labels = [label_from_path(path) for path, _ in images]
     paths = [path for path, _ in images]
     if path_contains:
