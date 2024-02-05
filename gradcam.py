@@ -54,9 +54,9 @@ class LeNetGrad(nn.Module):
         return x
 
 
-class CustomEmotionModel_3Grad(nn.Module):
+class CustomEmotionModel3Grad(nn.Module):
     def __init__(self, trained_model):
-        super(CustomEmotionModel_3Grad, self).__init__()
+        super(CustomEmotionModel3Grad, self).__init__()
         self.model = trained_model
         self.model.eval()
         self.gradients = None
@@ -163,8 +163,8 @@ def explain_image(model_grad, tens, label, path, save_path=None):
     # original image
     img = tens.squeeze().numpy().transpose(1, 2, 0)
     img = np.uint8((img + 1.) * 126)
-    # set title to path
-    ax[0, 0].title.set_text(f"{path}")
+    # set title to filename, last part of path
+    ax[0, 0].title.set_text(f"{path.split('/')[-1].split('.')[0]}")
     ax[0, 0].imshow(img)
 
     # weighted heatmap
@@ -221,5 +221,5 @@ def overlay(image: np.array, model):
 
 GRAD_MODELS = {
     "LeNet": LeNetGrad,
-    "CustomEmotionModel_3": CustomEmotionModel_3Grad,
+    "CustomEmotionModel3": CustomEmotionModel3Grad,
 }
