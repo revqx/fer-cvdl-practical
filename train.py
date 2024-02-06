@@ -119,7 +119,7 @@ def training_loop(model, train_loader, val_loader, criterion, optimizer, schedul
             running_loss = 0.0
             running_corrects = 0
 
-            progress_bar = tqdm(data_loader, desc=f"Epoch {epoch + 1}/{config['epochs']} {phase}")
+            progress_bar = tqdm(data_loader, desc=f"Epoch {epoch + 1}/{config['max_epochs']} {phase}")
 
             for inputs, labels in progress_bar:
                 inputs = inputs.to(config["device"])

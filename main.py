@@ -25,7 +25,7 @@ TRAIN_CONFIG = {
     "pretrained_model": "95f8nhu7",  # Options: model_id, model_name (for better wandb logging, use the model id)
     "train_data": "RAF-DB",  # Options: RAF-DB, AffectNet
     "preprocessing": "ImageNetNormalization",  # Options: ImageNetNormalization, Grayscale
-    "augmentations": "HorizontalFlip, RandomRotation, RandomCrop, RandAugment, RandAugment",
+    "augmentations": "HorizontalFlip, RandomRotation, RandomCrop, RandAugment, RandAugment, RandAugment",
     # Options: "HorizontalFlip", "RandomRotation", "RandomCrop", "TrivialAugmentWide", "RandAugment"
     "validation_split": 0.1,
     "learning_rate": 0.0001,
