@@ -25,17 +25,18 @@ TRAIN_CONFIG = {
     "pretrained_model": "95f8nhu7",  # Options: model_id, model_name (for better wandb logging, use the model id)
     "train_data": "RAF-DB",  # Options: RAF-DB, AffectNet
     "preprocessing": "ImageNetNormalization",  # Options: ImageNetNormalization, Grayscale
-    "augmentations": "HorizontalFlip, RandomRotation, RandomCrop, RandAugment, RandAugment, RandAugment",
+    "augmentations": "HorizontalFlip, RandomRotation, RandomCrop",
     # Options: "HorizontalFlip", "RandomRotation", "RandomCrop", "TrivialAugmentWide", "RandAugment"
     "validation_split": 0.1,
     "learning_rate": 0.0001,
-    "max_epochs": 6,
+    "max_epochs": 20,
+    "early_stopping_patience": 3,
     "batch_size": 32,
     "sampler": "uniform",  # Options: uniform
     "scheduler": "StepLR",  # Options: ReduceLROnPlateau, StepLR
     "ReduceLROnPlateau_factor": 0.1,
     "ReduceLROnPlateau_patience": 2,
-    "StepLR_decay_rate": 0.95,
+    "StepLR_decay_rate": 0.96,
     "loss_function": "CrossEntropyLoss",  # Options: CrossEntropyLoss
     "class_weight_adjustments": [1, 1, 1, 1, 1, 1],  # Only applied if scheduler is "uniform"
     "optimizer": "Adam",  # Options: Adam, SGD

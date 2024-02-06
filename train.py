@@ -96,7 +96,7 @@ def training_loop(model, train_loader, val_loader, criterion, optimizer, schedul
     best_model_wts = copy.deepcopy(model.state_dict())
     best_acc = 0.0
     epochs_no_improve = 0
-    patience = 5
+    patience = config["early_stopping_patience"]
 
     for epoch in range(config["max_epochs"]):
         wandb.log({"scheduler": [group['lr'] for group in optimizer.param_groups][0]}, step=epoch + 1)
