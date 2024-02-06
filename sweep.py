@@ -19,23 +19,28 @@ def get_sweep_config(metric="val_loss", goal="minimize", method="bayes",
             "values": ["RAF-DB"]  # options: AffectNet, RAF-DB
         },
         "batch_size": {
-            "values": [24, 32]  # defined here since log distribution causes bad comparability
+            "values": [32]  # defined here since log distribution causes bad comparability
         },
         "validation_split": {
             "values": [0.2]  # once sweeped to be set as constant
         },
-        "weak_class_adjust": {
-            "value": [1, 1, 1, 1, 1, 1]  # can be set to True and weights have to be adjusted in get_sweep_loader
+        "scheduler": {
+            "values": ["ReduceLROnPlateau", "StepLR"]
         },
         "ReduceLROnPlateau_patience": {
-            "values": [2, 4, 8]
+            "values": [3]
         },
         "augmentations": {
             "values": [
                 "HorizontalFlip, RandomRotation, RandomCrop, TrivialAugmentWide, TrivialAugmentWide",
+                "HorizontalFlip, RandomRotation, RandomCrop, TrivialAugmentWide",
                 "HorizontalFlip, RandomRotation, RandomCrop, RandAugment, RandAugment",
-                "HorizontalFlip, RandomRotation, RandomCrop, TrivialAugmentWide, RandAugment",
+                "HorizontalFlip, RandomRotation, RandomCrop, RandAugment",
+                "HorizontalFlip, RandomRotation, RandomCrop"
             ]
+        },
+        "pretrained_model": {
+            "values": ["", "gk1oomks"]
         }
     }
 
@@ -57,7 +62,7 @@ def get_sweep_config(metric="val_loss", goal="minimize", method="bayes",
     else:
         parameters_dict.update({
             "model_name": {
-                "values": ["CustomEmotionModel3"]
+                "values": ["CustomEmotionModel7"]
             }  # options: EmotionModel_2, CustomEmotionModel3, LeNet, ResNet18
         })
         sweep_config["parameters"] = parameters_dict
@@ -66,10 +71,10 @@ def get_sweep_config(metric="val_loss", goal="minimize", method="bayes",
         parameters_dict.update({
             "learning_rate": {
                 # a flat distribution between 0 and 0.1
-                "values": [0.001, 0.0001]
+                "values": [0.001, 0.0005, 0.0001]
             },
-            "epochs": {
-                "values": [10, 15, 20]
+            "max_epochs": {
+                "values": [15]
             }
         })
     else:
@@ -80,7 +85,7 @@ def get_sweep_config(metric="val_loss", goal="minimize", method="bayes",
                 "min": 0.0001,
                 "max": 0.001
             },
-            "epochs": {
+            "max_epochs": {
                 "values": [5]  # adjust to your liking (3 gives more accurate results than 1)
             }
         })

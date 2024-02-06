@@ -19,20 +19,20 @@ load_dotenv()
 app = typer.Typer()
 
 TRAIN_CONFIG = {
-    "model_name": "CustomEmotionModel6",
+    "model_name": "CustomEmotionModel3",
     # Options: LeNet, ResNet{18, 50}, EmotionModel2, CustomEmotionModel{3, 4, 5}, MobileNetV2
     "model_description": "",
-    "pretrained_model": "",  # Options: model_id, model_name (for better wandb logging, use the model id)
-    "train_data": "AffectNet",  # Options: RAF-DB, AffectNet
+    "pretrained_model": "95f8nhu7",  # Options: model_id, model_name (for better wandb logging, use the model id)
+    "train_data": "RAF-DB",  # Options: RAF-DB, AffectNet
     "preprocessing": "ImageNetNormalization",  # Options: ImageNetNormalization, Grayscale
-    "augmentations": "HorizontalFlip, RandomRotation, RandomCrop, TrivialAugmentWide, TrivialAugmentWide",
+    "augmentations": "HorizontalFlip, RandomRotation, RandomCrop, RandAugment, RandAugment",
     # Options: "HorizontalFlip", "RandomRotation", "RandomCrop", "TrivialAugmentWide", "RandAugment"
     "validation_split": 0.1,
-    "learning_rate": 0.001,
-    "epochs": 15,
+    "learning_rate": 0.0001,
+    "max_epochs": 6,
     "batch_size": 32,
     "sampler": "uniform",  # Options: uniform
-    "scheduler": "ReduceLROnPlateau",  # Options: ReduceLROnPlateau, StepLR
+    "scheduler": "StepLR",  # Options: ReduceLROnPlateau, StepLR
     "ReduceLROnPlateau_factor": 0.1,
     "ReduceLROnPlateau_patience": 2,
     "StepLR_decay_rate": 0.95,

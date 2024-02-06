@@ -78,7 +78,5 @@ def analyze_run_and_upload(model_name: str):
                                                    class_names=list(LABEL_TO_STR.values()),
                                                    title="Confusion Matrix")
 
-    avg_acc = sum([1 for p, t in zip(preds, y_true) if p == t]) / len(preds)
-
     wandb.log({"confusion_matrix": conf_matrix_plot})
     print(f"Finished analysis of model {model_id}.")

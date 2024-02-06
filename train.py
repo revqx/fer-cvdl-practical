@@ -1,3 +1,4 @@
+import copy
 import os
 from datetime import datetime
 
@@ -78,7 +79,7 @@ def train_model(config: dict):
     model_save_path = os.path.join(model_save_path, f"{config['model_name']}-{timestamp}-{wandb_id}.pth")
 
     # Train and evaluate the model
-    training_loop(model, train_loader, val_loader, criterion, optimizer, scheduler, config)
+    model = training_loop(model, train_loader, val_loader, criterion, optimizer, scheduler, config)
 
     # Save model and transforms
     torch.save({"model": model.state_dict(), "preprocessing": preprocessing}, model_save_path)
@@ -88,15 +89,18 @@ def train_model(config: dict):
 
 
 def training_loop(model, train_loader, val_loader, criterion, optimizer, scheduler, config):
-    # Define the phases for which to run the training loop
     phases = ["train"]
     if val_loader is not None:
         phases.append("val")
 
-    for epoch in range(config["epochs"]):
-        wandb.log({"learning_rate": [group['lr'] for group in optimizer.param_groups][0]}, step=epoch + 1)
+    best_model_wts = copy.deepcopy(model.state_dict())
+    best_acc = 0.0
+    epochs_no_improve = 0
+    patience = 5
 
-        # Dictionaries to store metrics for each phase
+    for epoch in range(config["max_epochs"]):
+        wandb.log({"scheduler": [group['lr'] for group in optimizer.param_groups][0]}, step=epoch + 1)
+
         metrics = {
             "train_loss": 0.0,
             "train_acc": 0.0,
@@ -131,7 +135,7 @@ def training_loop(model, train_loader, val_loader, criterion, optimizer, schedul
                     if phase == "train":
                         loss.backward()
                         optimizer.step()
-                
+
                 torch.cuda.empty_cache()
 
                 running_loss += loss.item() * inputs.size(0)
@@ -139,18 +143,30 @@ def training_loop(model, train_loader, val_loader, criterion, optimizer, schedul
 
                 progress_bar.set_postfix({"loss": f"{loss.item():.2f}"})
 
-            # Calculate and store metrics
             epoch_loss = running_loss / len(data_loader.dataset)
             epoch_acc = float(running_corrects) / len(data_loader.dataset)
             metrics[f"{phase}_loss"] = epoch_loss
             metrics[f"{phase}_acc"] = epoch_acc
 
-            print(f"{phase} loss: {epoch_loss}, acc: {epoch_acc}")
+            print(f"{phase} loss: {epoch_loss}")
+            print(f"{phase} acc: {epoch_acc}")
+
+            if phase == 'val' and epoch_acc > best_acc:
+                best_acc = epoch_acc
+                best_model_wts = copy.deepcopy(model.state_dict())
+                epochs_no_improve = 0
+            elif phase == 'val':
+                epochs_no_improve += 1
 
         scheduler.step(metrics["val_loss"] if config["scheduler"] == "ReduceLROnPlateau" else None)
-
-        # Log all metrics for the epoch at once
         wandb.log(metrics, step=epoch + 1)
+
+        if epochs_no_improve >= patience:
+            print(f"Early stopping triggered after {epoch + 1} epochs.")
+            break
+
+    model.load_state_dict(best_model_wts)
+    return model
 
 
 def get_weighted_sampler(labels, class_weight_adjustments=None):
@@ -200,10 +216,10 @@ def train_val_dataloaders(dataset, preprocessing, augmentations, validation_spli
                               shuffle=train_sampler is None)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, sampler=val_sampler, shuffle=val_sampler is None)
 
-    print(f"Updated train distribution (Σ: {len(train_sampler)}): "
+    print(f"Sample of updated train distribution (Σ: {len(train_sampler)}): "
           f"{np.bincount(np.concatenate([labels.numpy() for _, labels in train_loader]))}") \
         if augmentations != [] or sampler == "uniform" else None
-    print(f"Updated val distribution (Σ: {len(val_sampler)}): "
+    print(f"Sample of updated val distribution (Σ: {len(val_sampler)}): "
           f"{np.bincount(np.concatenate([labels.numpy() for _, labels in val_loader]))}") \
         if augmentations != [] or sampler == "uniform" else None
 
