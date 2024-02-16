@@ -1,5 +1,6 @@
 import os
-
+import seaborn as sns
+import matplotlib.pyplot as plt
 import pandas as pd
 
 from inference import apply_model
@@ -33,3 +34,18 @@ def ensemble_results(model_ids, data_path=os.getenv("DATASET_TEST_PATH")):
     ensemble_results_df.insert(0, "path", paths)
 
     return ensemble_results_df
+
+
+def save_confusion_matrix_as_heatmap(conf_matrix, labels, filename):
+    fig, ax = plt.subplots(figsize=(10, 7))
+    sns.heatmap(conf_matrix, annot=True, fmt='.2f', xticklabels=labels, yticklabels=labels, ax=ax)
+
+    ax.xaxis.tick_top()
+    ax.xaxis.set_label_position('top')
+
+    ax.set_xlabel('Predicted')
+    ax.set_ylabel('Actual')
+
+    fig.suptitle("Top-1: 82,16% & Top-3: 95.33%", y=0.1, weight='bold')
+
+    plt.savefig(filename)
