@@ -8,45 +8,50 @@ from dotenv import load_dotenv
 
 from analyze import accuracies, confusion_matrix, analyze_run_and_upload
 from clip_affect_net import clip_affect_net_faces
-from ensemble import ensemble_results
+from ensemble import ensemble_results, save_confusion_matrix_as_heatmap
 from inference import apply_model
 from sweep import get_sweep_config
 from train import train_model
 from utils import label_from_path
 from video_prediction import make_video_prediction
+#from distributions import  get_distributions_2, kl_inference_2, calculate_top_n_accuracies_kl, generate_confusion_matrix, get_unique_distributions
+from distribution import get_true_value_distributions, get_activation_values, get_kl_results, kl_divergence_accuracies, generate_confusion_matrix, get_avg_softmax_activation_values
+
 
 load_dotenv()
 app = typer.Typer()
 
 TRAIN_CONFIG = {
-    "model_name": "CustomEmotionModel6",
+    "model_name": "CustomEmotionModel3",
     # Options: LeNet, ResNet{18, 50}, EmotionModel2, CustomEmotionModel{3, 4, 5}, MobileNetV2
     "model_description": "",
     "pretrained_model": "",  # Options: model_id, model_name (for better wandb logging, use the model id)
-    "train_data": "AffectNet",  # Options: RAF-DB, AffectNet
+    "train_data": "RAF-DB",  # Options: RAF-DB, AffectNet
     "preprocessing": "ImageNetNormalization",  # Options: ImageNetNormalization, Grayscale
     "augmentations": "HorizontalFlip, RandomRotation, RandomCrop, TrivialAugmentWide, TrivialAugmentWide",
     # Options: "HorizontalFlip", "RandomRotation", "RandomCrop", "TrivialAugmentWide", "RandAugment"
     "validation_split": 0.1,
-    "learning_rate": 0.001,
-    "epochs": 15,
+    "learning_rate": 0.0001,
+    "epochs": 10,
     "batch_size": 32,
     "sampler": "uniform",  # Options: uniform
-    "scheduler": "ReduceLROnPlateau",  # Options: ReduceLROnPlateau, StepLR
+    "scheduler": "StepLR",  # Options: ReduceLROnPlateau, StepLR
     "ReduceLROnPlateau_factor": 0.1,
     "ReduceLROnPlateau_patience": 2,
-    "StepLR_decay_rate": 0.95,
+    "StepLR_decay_rate": 0.9,
     "loss_function": "CrossEntropyLoss",  # Options: CrossEntropyLoss
     "class_weight_adjustments": [1, 1, 1, 1, 1, 1],  # Only applied if scheduler is "uniform"
     "optimizer": "Adam",  # Options: Adam, SGD
-    "device": "mps",  # Options: cuda, cpu, mps
+    "device": "cuda:0",  # Options: cuda, cpu, mps
     "DynamicModel_hidden_layers": 1,
-    "DynamicModel_hidden_dropout": 0.2
+    "DynamicModel_hidden_dropout": 0.2,
+    "max_epochs": "30",
+    "early_stopping_patience": "5",
 }
 
 # In case you want to create an ensemble model, add the model names/id here
-ENSEMBLE_MODELS = ["h8txabjg", "odyx0ott", "8uu89woq"]
-
+ENSEMBLE_MODELS = ["8cp5wrtr_1", "zpwmo75q", "zpwmo75q", "npl99ug4", "h1zooiju", "1p4v64b3", "1eq7h5pb"] 
+# Current best ensemble with 82,16 %Top1 ["8cp5wrtr_1", "zpwmo75q", "zpwmo75q", "npl99ug4", "h1zooiju", "1p4v64b3", "1eq7h5pb"]
 
 @app.command()
 def train(offline: bool = False, sweep: bool = False):
@@ -94,6 +99,8 @@ def analyze(model_name: str, data_path: str = os.getenv("DATASET_TEST_PATH")):
     print(conf_matrix)
     print(top_n)
 
+    return model_id, top_n, conf_matrix
+
 
 @app.command()
 def demo(model_name: str, record: bool = False, webcam: bool = False, input_file: str = "",
@@ -136,6 +143,11 @@ def ensemble(data_path=os.getenv("DATASET_TEST_PATH")):
 
     top_n = accuracies(ensemble_results_df)
     conf_matrix = confusion_matrix(ensemble_results_df)
+
+    labels = [col for col in ensemble_results_df.columns if col != 'path']
+    heatmap_filename = "ensemble-confusion-matrix-dark.png"
+    save_confusion_matrix_as_heatmap(conf_matrix, labels, heatmap_filename)
+
     print(conf_matrix)
     print(top_n)
 
@@ -152,29 +164,22 @@ def sweep(sweep_id: str = "", count: int = 40):
 
 
 @app.command()
-def get_activation(model_name: str, data_path: str = os.getenv("DATASET_TEST_PATH"),
-                   output_path: str = os.getenv("ACTIVATION_VALUES_PATH")):
-    model_id, results = apply_model(model_name, data_path)
-    labels = []
-    activation_values_dict = {}
+def true_value_distributions(model_name: str, data_path: str = os.getenv("DATASET_RAF_DB_PATH")):
+    output_path = os.getenv("ACTIVATION_VALUES_PATH")
+    activation_values_dict = get_activation_values(model_name, data_path)
+    true_value_distributions = get_avg_softmax_activation_values(activation_values_dict, output_path,
+                                                                  constant=20, beta=1.0, threshold=0.95)
 
-    for path, *values in results.values:
-        label = label_from_path(path)
-        labels.append(label)
-        if label is None:
-            raise ValueError(f"Could not find label in path {path}.")
 
-        if model_name not in activation_values_dict:
-            activation_values_dict[model_name] = {}
+@app.command()
+def kl_analyze(model_name: str, data_path: str = os.getenv("DATASET_TEST_PATH")):
 
-        if label not in activation_values_dict[model_name]:
-            activation_values_dict[model_name][label] = []
-
-        activation_values_dict[model_name][label].append(values)
-
-    # save values locally as a json file (folder path from env file)
-    with open(f"{output_path}\\activation_values.json", "w") as f:
-        json.dump(activation_values_dict, f)
+    above_df, kl_divergence_df, be_labels, ab_labels = get_kl_results(model_name, data_path, constant = 20,
+                                                                   beta = 1.0, threshold=0.95)
+    top1, top3, pred_labels = kl_divergence_accuracies(kl_divergence_df, above_df, be_labels, ab_labels)
+    conf_matrix = generate_confusion_matrix(be_labels,ab_labels, pred_labels)
+    print(conf_matrix)
+    print("Top 1 accuracy: ", top1, "Top 3 accuracy: ", top3)
 
 
 if __name__ == "__main__":
