@@ -14,15 +14,14 @@ from sweep import get_sweep_config
 from train import train_model
 from utils import label_from_path
 from video_prediction import make_video_prediction
-#from distributions import  get_distributions_2, kl_inference_2, calculate_top_n_accuracies_kl, generate_confusion_matrix, get_unique_distributions
-from distribution import get_true_value_distributions, get_activation_values, get_kl_results, kl_divergence_accuracies, generate_confusion_matrix, get_avg_softmax_activation_values
+from distribution import  get_activation_values, get_kl_results, kl_divergence_accuracies, generate_confusion_matrix, get_avg_softmax_activation_values
 
 
 load_dotenv()
 app = typer.Typer()
 
 TRAIN_CONFIG = {
-    "model_name": "CustomEmotionModel3",
+    "model_name": "ConvModel1",
     # Options: LeNet, ResNet{18, 50}, EmotionModel2, CustomEmotionModel{3, 4, 5}, MobileNetV2
     "model_description": "",
     "pretrained_model": "",  # Options: model_id, model_name (for better wandb logging, use the model id)
@@ -166,18 +165,20 @@ def sweep(sweep_id: str = "", count: int = 40):
 @app.command()
 def true_value_distributions(model_name: str, data_path: str = os.getenv("DATASET_RAF_DB_PATH")):
     output_path = os.getenv("ACTIVATION_VALUES_PATH")
-    activation_values_dict = get_activation_values(model_name, data_path)
+    activation_values_dict = get_activation_values(model_name, data_path, output_path)
     true_value_distributions = get_avg_softmax_activation_values(activation_values_dict, output_path,
-                                                                  constant=20, beta=1.0, threshold=0.95)
+                                                                  constant=20, beta=2, threshold=22)
 
 
 @app.command()
 def kl_analyze(model_name: str, data_path: str = os.getenv("DATASET_TEST_PATH")):
-
-    above_df, kl_divergence_df, be_labels, ab_labels = get_kl_results(model_name, data_path, constant = 20,
-                                                                   beta = 1.0, threshold=0.95)
-    top1, top3, pred_labels = kl_divergence_accuracies(kl_divergence_df, above_df, be_labels, ab_labels)
-    conf_matrix = generate_confusion_matrix(be_labels,ab_labels, pred_labels)
+    output_path = os.getenv("ACTIVATION_VALUES_PATH")
+    above_df, kl_divergence_df, be_labels, ab_labels = get_kl_results(model_name, output_path, data_path, constant = 20,
+                                                                   beta =2, threshold=22)
+    print(len(ab_labels)) # outputs number of samples above threshold
+    top1, top3, pred_labels, true_labels, debug_labels = kl_divergence_accuracies(kl_divergence_df, above_df, be_labels, ab_labels)
+    print(debug_labels[-1:]) # outputs last set of kl-divergence values
+    conf_matrix = generate_confusion_matrix(true_labels, pred_labels)
     print(conf_matrix)
     print("Top 1 accuracy: ", top1, "Top 3 accuracy: ", top3)
 

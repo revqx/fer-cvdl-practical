@@ -4,13 +4,8 @@ import os
 import matplotlib.pyplot as plt
 from dotenv import load_dotenv
 import typer
-import seaborn as sns
 import pandas as pd
 from sklearn.metrics import confusion_matrix
-import scipy
-from scipy.stats import entropy
-from scipy.special import kl_div
-from typing import List
 import torch 
 import torch.nn.functional as F
 
@@ -23,7 +18,7 @@ app = typer.Typer()
 
 ### Code for extracting activation values (training & validation data)
 
-def get_activation_values(model_name, data_path):
+def get_activation_values(model_name, data_path, output_path):
     '''Takes a model name as str and a data path as str and 
     returns a nested dictionary of activation values grouped by true label.
     For each model_name there are nested dictionaries for each label
@@ -64,27 +59,12 @@ def convert_np_arrays_to_lists(obj):
     
 
 def safe_file_path(dict, output_path, file_name='activation_values.json'):
+    '''Takes a dictionary and an output path as str,
+    saves the dictionary as a json file in the output path.'''
     file_path = os.path.join(output_path, file_name)
     with open(file_path, 'w') as f:
         json.dump(convert_np_arrays_to_lists(dict), f)
         # values will be saved in a json file (.env file needs to be updated with path to folder)
-
-
-# get average of activation values for each label (adding constant for stability)
-def get_avg_activation_values_by_index(activation_values_dict, constant=0):
-    '''Takes a nested dictionary of activation values and returns a nested 
-    dictionary of average activation values by list index for each label. 
-    The constant is added for stability.'''
-    avg_activation_values_dict = {}
-    for model_name, label_dict in activation_values_dict.items():
-        avg_activation_values_dict[model_name] = {}
-        for label, values in label_dict.items():
-            # transpose the list of lists to claculate avg by index
-            transposed_values = list(map(list, zip(*values)))
-            # constant is added for stability
-            avg_activation_values_dict[model_name][label] = [np.mean(np.array(val) + constant)
-                                                              for val in transposed_values]
-    return avg_activation_values_dict
 
 
 ### Convert activation values to probaility distributions
@@ -94,27 +74,9 @@ def softmax(x, beta = 1.0):
     and tunes the distribution depending on beta value.'''
     # beta is higher for focus on certain values, lower for more uniform distribution
     x = x.astype(float)  # convert the inner values to floats to avoid numpy error
-    e_x = np.exp(x * beta - np.max(x))  
+    e_x = np.exp(x / beta - np.max(x))  
     # subtract max(x) for numerical stability, multiply with beta for temperature scaling
     return e_x / e_x.sum(axis=0)
-
-
-def get_prob_distributions(avg_activation_values_dict, beta=1.0):
-    '''Takes a nested dictionary of average activation values and returns a nested 
-    dictionary of probability distributions for each label.'''
-    distributions_dict = {}
-
-    for model_name, label_dict in avg_activation_values_dict.items():
-        distributions_dict[model_name] = {}
-        for label, values in label_dict.items():
-            if all(isinstance(item, (int, float)) for item in values):
-                flat_values = np.array(values)
-            else:
-                # flatten the list and convert to numpy array
-                flat_values = np.array([item for sublist in values for item in sublist])
-            distributions_dict[model_name][label] = softmax(flat_values, beta=beta)
-
-    return distributions_dict
 
 
 ### Code for plotting distributions
@@ -131,25 +93,6 @@ def plot_distributions(prob_distributions_dict, output_path):
             plt.close()
 
 
-### Getting all true value distributions 
-            
-def get_true_value_distributions(activation_values_dict, output_path, beta=1.0, constant=0):
-    '''Takes a nested dictionary of activation values and an output path as str, 
-    calculates the average activation values by index, converts these to probability distributions, 
-    and saves a plot of each distribution.''' 
-    avg_activation_values_dict = get_avg_activation_values_by_index(activation_values_dict,
-                                                                     constant=constant)
-    
-    safe_file_path(avg_activation_values_dict, output_path, 'avg_activation_values.json')
-    
-    distributions_dict = get_prob_distributions(avg_activation_values_dict, beta=beta)
-    
-    safe_file_path(distributions_dict, output_path, 'distributions.json')
-    plot_distributions(distributions_dict, output_path)
-
-    return distributions_dict
-
-
 ### First Softmax then average with threshold
 
 def get_avg_softmax_activation_values(activation_values_dict, output_path, beta=1.0, constant=0, threshold=None):
@@ -161,12 +104,15 @@ def get_avg_softmax_activation_values(activation_values_dict, output_path, beta=
     for model_name, label_dict in activation_values_dict.items():
         avg_softmax_activation_values_dict[model_name] = {}
         for label, values in label_dict.items():
-            # Apply softmax to each list of activation values
-            softmax_values = [softmax(np.array(val) + constant, beta=beta) for val in values]
-            # Filter out samples where the highest softmax value is above the threshold
+            adjusted_values = [np.array(val) + constant for val in values]
             if threshold is not None:
-                softmax_values = [val for val in softmax_values if max(val) < threshold]
-            # Transpose the list of lists to calculate avg by index
+                adjusted_values = [val for val in adjusted_values if max(val) < threshold]
+
+            softmax_values = [softmax(val, beta=beta) for val in adjusted_values]
+
+            for softmax_val in softmax_values:
+                assert np.isclose(sum(softmax_val), 1, atol=1e-6), "Softmax distribution does not sum to 1"
+
             transposed_values = list(map(list, zip(*softmax_values)))
             avg_softmax_activation_values_dict[model_name][label] = [np.mean(val) for val in transposed_values]
     
@@ -176,19 +122,17 @@ def get_avg_softmax_activation_values(activation_values_dict, output_path, beta=
     return avg_softmax_activation_values_dict
 
 
-### Code for extracting distribution of single sample
+### Code for extracting distribution of validation data
 
-def get_inf_distributions(model_name, data_path, beta=1.0, constant=0.0):
+def get_inf_distributions(model_name, data_path, output_path, beta=1.0, constant=0.0, threshold=None):
     '''Takes a model name and a data path, applies the model to the data,
-    and returns a softmax distribution of the activation values for each sample.'''
+    and returns a softmax distribution of the activation values for each sample.''' 
     model_id, activation_values_df = apply_model(model_name, data_path)
 
     if not all(isinstance(label, str) for label in activation_values_df['file']):
         raise ValueError("The 'file' column should contain strings.")
 
-    # Sort the DataFrame by the 'file' column
     activation_values_df = activation_values_df.sort_values(by='file')
-
     labels = activation_values_df['file'].values.tolist()
 
     # file column not needed anymore
@@ -198,34 +142,33 @@ def get_inf_distributions(model_name, data_path, beta=1.0, constant=0.0):
         raise ValueError("The columns other than 'file' should contain numeric values.")
 
     inf_distributions = {}
+    above_threshold = {}
+    below_threshold = {}
 
     # get the distribution for each row
     for i, row in activation_values_df.iterrows():
         activation_values = row[columns].values.ravel()
         activation_values = np.nan_to_num(activation_values)
         # add the constant to each activation value
-        activation_values += constant
+        adjusted_activation_values = activation_values + constant
         # flatten the activation_values array
-        activation_values = activation_values.flatten()
-        distribution = softmax(activation_values, beta=beta)
+        adjusted_activation_values = adjusted_activation_values.flatten()
+        distribution = softmax(adjusted_activation_values, beta=beta)
         inf_distributions[labels[i]] = distribution.tolist()
 
-    return inf_distributions
+        # threshold check
+        if threshold is not None:
+            if max(adjusted_activation_values) >= threshold:
+                above_threshold[labels[i]] = distribution.tolist()
+            else:
+                below_threshold[labels[i]] = distribution.tolist()
+
+    safe_file_path(inf_distributions, output_path, 'inf_distributions.json')
+
+    return above_threshold, below_threshold
 
 
 ### Code for calculating KL divergence
-
-def kl_divergence(inference_distribution, distributions_dict):
-    '''Takes a probability distribution and a dictionary of distributions,
-    compares the input distribution to each distribution in the dictionary using KL divergence,
-    and returns the results as a list.'''
-    kl_divergences = []
-    for model_name, distributions in distributions_dict.items():
-        for label, distribution in distributions.items():
-            kl_divergences.append((model_name, label, kl_div(inference_distribution, distribution)))
-
-    return kl_divergences
-
 
 def load_json(output_path, file=''):
     '''Loads a json file and returns the data.'''
@@ -238,8 +181,12 @@ def load_json(output_path, file=''):
 
 
 def kl_divergence_pytorch(inf_distribution, true_distributions):
+    '''Takes a probability distribution and a dictionary of distributions,
+    compares the input distribution to each distribution in the dictionary using KL divergence,
+    and returns the results as a dictionary.'''
     kl_divergences = {}
-    inf_distribution = torch.tensor(inf_distribution).log().view(1, -1)  # Take the logarithm of inf_distribution
+    # pytorch kl_div function requires input to be log probabilities and tensors
+    inf_distribution = torch.tensor(inf_distribution).log().view(1, -1)  # log of inf_distribution
 
     for model_name, distributions in true_distributions.items():
         for label, true_distribution in distributions.items():
@@ -249,37 +196,22 @@ def kl_divergence_pytorch(inf_distribution, true_distributions):
                 print(f"Skipping label {label} in model {model_name} because inf_distribution and true_distribution have different sizes.")
                 continue
 
-            kl_divergence = F.kl_div(inf_distribution, true_distribution, reduction='batchmean')  # Both distributions are already softmaxed
+            kl_divergence = F.kl_div(inf_distribution, true_distribution, reduction='batchmean')
             
             kl_divergences[label] = kl_divergence.item()  
     return kl_divergences
 
 
-def filter_distributions(inf_distributions, threshold):
-    '''Takes a dictionary of inference distributions and a threshold.
-    Separates the distributions into those above and below the threshold.
-    Returns two dictionaries: one for the distributions above the threshold and one for the distributions below the threshold.'''
-    
-    if threshold is None:
-        return {}, inf_distributions
-
-    above_threshold = {}
-    below_threshold = {}
-    for label, distribution in inf_distributions.items():
-        if max(distribution) >= threshold:
-            above_threshold[label] = distribution
-        else:
-            below_threshold[label] = distribution
-
-    return above_threshold, below_threshold
-
-
-def get_kl_results(model_name, data_path: str = os.getenv('DATASET_TEST_PATH'), 
+def get_kl_results(model_name, output_path, data_path: str = os.getenv('DATASET_TEST_PATH'), 
                             dist_path: str = os.getenv('ACTIVATION_VALUES_PATH'),
                             beta=1.0, constant=0.0, threshold=None):
-    true_distributions = load_json(dist_path, 'distributions.json')
-    inf_distributions = get_inf_distributions(model_name, data_path, beta=beta, constant=constant)
-    above_threshold_dict, below_threshold = filter_distributions(inf_distributions, threshold)
+    '''Takes a model name, a data path, and a distribution path,
+    calculates the KL divergence between the inference distributions and the true distributions,
+    and returns the results as a dataframe.'''
+    
+    true_distributions = load_json(dist_path, 'avg_softmax_activation_values.json')
+    above_threshold, below_threshold = get_inf_distributions_2(model_name, data_path, output_path,
+                                                                beta=beta, constant=constant, threshold=threshold)
 
     kl_results = []
     below_threshold_labels = []
@@ -292,91 +224,67 @@ def get_kl_results(model_name, data_path: str = os.getenv('DATASET_TEST_PATH'),
 
     kl_divergences_df = pd.DataFrame(kl_results)
 
-    # Extract the labels from the above_threshold dictionary
-    above_threshold_labels = list(above_threshold_dict.keys())
-
-    # Convert the above_threshold dictionary to a DataFrame
-    above_threshold_df = pd.DataFrame.from_dict(above_threshold_dict, orient='index')
+    # get true_labels from the above_threshold dictionary
+    above_threshold_labels = list(above_threshold.keys())
+    above_threshold_df = pd.DataFrame.from_dict(above_threshold, orient='index')
 
     return above_threshold_df, kl_divergences_df, below_threshold_labels, above_threshold_labels
 
 
-def kl_confusion_matrix(kl_results_df: pd.DataFrame):
-    """Return the confusion matrix."""
-    LABEL_TO_STR = {i: str(i) for i in range(len(kl_results_df.columns) - 1)}
-    LABEL_TO_STR[len(LABEL_TO_STR)] = 'inf'
-
-    matrix = np.zeros((len(LABEL_TO_STR), len(LABEL_TO_STR)))
-
-    for index, row in kl_results_df.iterrows():
-        label = int(row['Label'])
-        kl_divergences = row['KL-Divergence']
-        predictions = kl_divergences.argsort()[::-1]
-        if predictions[0] in LABEL_TO_STR:
-            if LABEL_TO_STR[predictions[0]] == 'inf':
-                # Handle the case where LABEL_TO_STR[predictions[0]] is 'inf'
-                # Replace this line with the appropriate action
-                pass
-            else:
-                matrix[label, int(LABEL_TO_STR[predictions[0]])] += 1
-
-    return pd.DataFrame(matrix, index=LABEL_TO_STR.values(), columns=LABEL_TO_STR.values())
-
-
 def kl_divergence_accuracies(kl_results_df, above_threshold_df, below_threshold_labels, above_threshold_labels):
+    '''Takes a dataframe of KL divergence results and a dataframe of above threshold results,
+    calculates the top 1 and top 3 accuracies, and returns the results as floats.'''
     top1 = 0.0
     top3 = 0.0
     top1_labels = []
+    true_labels = []
+    debug_dists = []
 
     labels = below_threshold_labels + above_threshold_labels
 
     for i, row in kl_results_df.iterrows():
         true_label = labels[i].replace('.jpg', '')
+        true_labels.append(true_label)
         row = row[row.apply(lambda x: isinstance(x, (int, float)))]
         if row.empty:
             continue
-
+        # sort by min kl-divergence value
         pred_labels = row.sort_values().index.tolist()
+        debug_dists.append(row.values.tolist()[:6])
         pred_labels = [LABEL_TO_STR[int(label)] for label in pred_labels]
         top1_labels.append(pred_labels[0])
 
         if true_label == pred_labels[0]:
             top1 += 1
-        if true_label in pred_labels[:3]:  # Check if true_label is in the top 3 predictions
+        if true_label in pred_labels[:3]:  
             top3 += 1
 
     for i, row in above_threshold_df.iterrows():
-        # Use i directly as the true label for a row in above_threshold_df
-        true_label = i.replace('.jpg', '')
+        filename = os.path.basename(i)
+        true_label = filename.split('_')[1].replace('.jpg', '')
+        true_labels.append(true_label)
         row = row[row.apply(lambda x: isinstance(x, (int, float)))]
         if row.empty:
             continue
-
+        # sort by max softmax value
         pred_labels = row.sort_values(ascending=False).index.tolist()
-        pred_label = pred_labels[0]
-        pred_label = LABEL_TO_STR[int(pred_label)]
-        top1_labels.append(pred_label)
+        pred_labels = [LABEL_TO_STR[int(label)] for label in pred_labels]
+        top1_labels.append(pred_labels[0])
 
-        if true_label == pred_label:
+        if true_label == pred_labels[0]:
             top1 += 1
-        if true_label in pred_labels[:3]:  # Check if true_label is in the top 3 predictions
+        if true_label in pred_labels[:3]: 
             top3 += 1
 
     top1 /= len(labels)
     top3 /= len(labels)
-    return top1, top3, top1_labels
+    return top1, top3, top1_labels, true_labels, debug_dists
 
 
-def generate_confusion_matrix(below_threshold_labels, above_threshold_labels, top1_labels):
-    # Concatenate the below_threshold_labels and above_threshold_labels to form true_labels
-    true_labels = below_threshold_labels + above_threshold_labels
-
-    # Remove the '.jpg' extension from the true labels
-    true_labels = [label.replace('.jpg', '') for label in true_labels]
+def generate_confusion_matrix(true_labels, top1_labels):
+    '''Takes a list of true labels and a list of predicted labels,
+    calculates the confusion matrix, and returns the results as a numpy array.'''
 
     cm = confusion_matrix(true_labels, top1_labels)
 
     return cm
-
-
-
