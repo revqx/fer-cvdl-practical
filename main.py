@@ -171,7 +171,7 @@ def true_value_distributions(model_name: str, data_path: str = os.getenv("DATASE
     output_path = os.getenv("ACTIVATION_VALUES_PATH")
     activation_values_dict = get_activation_values(model_name, data_path, output_path)
     true_value_distributions = get_avg_softmax_activation_values(activation_values_dict, output_path,
-                                                                  constant=20, beta=0.5, threshold=24)
+                                                                  constant=20, temperature=0.5, threshold=24)
 
 
 @app.command()
@@ -180,7 +180,7 @@ def kl_analyze(model_name: str, data_path: str = os.getenv("DATASET_TEST_PATH"))
     Returns the top1 and top3 accuracies and the confusion matrix."""
     output_path = os.getenv("ACTIVATION_VALUES_PATH")
     above_df, kl_divergence_df, be_labels, ab_labels = get_kl_results(model_name, output_path, data_path, constant = 20,
-                                                                   beta =0.5, threshold=24)
+                                                                   temperature =0.5, threshold=24)
     print(len(ab_labels)) # outputs number of samples above threshold
     top1, top3, pred_labels, true_labels, _ = kl_divergence_accuracies(kl_divergence_df, above_df, be_labels, ab_labels)
     conf_matrix = generate_confusion_matrix(true_labels, pred_labels)

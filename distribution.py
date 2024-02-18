@@ -66,13 +66,13 @@ def safe_file_path(dict, output_path, file_name='activation_values.json'):
         # Values will be saved in a json file (.env file needs to be updated with path to folder)
 
 
-def softmax(x, beta = 1.0):
+def softmax(x, temperature = 1.0):
     """Compute softmax values for each sets of scores in x 
-    and tunes the distribution depending on beta value."""
-    # Beta is higher for focus on certain values, lower for more uniform distribution
+    and tunes the distribution depending on temperature value."""
+    # temperature is higher for focus on certain values, lower for more uniform distribution
     x = x.astype(float)  # convert the inner values to floats to avoid numpy error
-    e_x = np.exp(x / beta - np.max(x))  
-    # Subtract max(x) for numerical stability, multiply with beta for temperature scaling
+    e_x = np.exp(x / temperature - np.max(x))  
+    # Subtract max(x) for numerical stability, multiply with temperature for temperature scaling
     return e_x / e_x.sum(axis=0)
 
 
@@ -88,7 +88,7 @@ def plot_distributions(prob_distributions_dict, output_path):
             plt.close()
 
 
-def get_avg_softmax_activation_values(activation_values_dict, output_path, beta=1.0, constant=0, threshold=None):
+def get_avg_softmax_activation_values(activation_values_dict, output_path, temperature=1.0, constant=0, threshold=None):
     """Takes a nested dictionary of activation values and an output path as str, 
     applies softmax to each list of activation values, calculates the average activation values by index, 
     and saves the results. Returns only those samples where the highest softmax value is below the given threshold."""
@@ -101,7 +101,7 @@ def get_avg_softmax_activation_values(activation_values_dict, output_path, beta=
             if threshold is not None:
                 adjusted_values = [val for val in adjusted_values if max(val) < threshold]
 
-            softmax_values = [softmax(val, beta=beta) for val in adjusted_values]
+            softmax_values = [softmax(val, temperature=temperature) for val in adjusted_values]
 
             for softmax_val in softmax_values:
                 assert np.isclose(sum(softmax_val), 1, atol=1e-6), "Softmax distribution does not sum to 1"
@@ -115,7 +115,7 @@ def get_avg_softmax_activation_values(activation_values_dict, output_path, beta=
     return avg_softmax_activation_values_dict
 
 
-def get_inf_distributions(model_name, data_path, output_path, beta=1.0, constant=0.0, threshold=None):
+def get_inf_distributions(model_name, data_path, output_path, temperature=1.0, constant=0.0, threshold=None):
     """Takes a model name and a data path, applies the model to the data,
     and returns a softmax distribution of the activation values for each sample."""
     model_id, activation_values_df = apply_model(model_name, data_path)
@@ -144,7 +144,7 @@ def get_inf_distributions(model_name, data_path, output_path, beta=1.0, constant
         adjusted_activation_values = activation_values + constant
         # Flatten the activation_values array
         adjusted_activation_values = adjusted_activation_values.flatten()
-        distribution = softmax(adjusted_activation_values, beta=beta)
+        distribution = softmax(adjusted_activation_values, temperature=temperature)
         inf_distributions[labels[i]] = distribution.tolist()
 
         # Threshold check
@@ -194,14 +194,14 @@ def kl_divergence_pytorch(inf_distribution, true_distributions):
 
 def get_kl_results(model_name, output_path, data_path: str = os.getenv('DATASET_TEST_PATH'), 
                             dist_path: str = os.getenv('ACTIVATION_VALUES_PATH'),
-                            beta=1.0, constant=0.0, threshold=None):
+                            temperature=1.0, constant=0.0, threshold=None):
     """Takes a model name, a data path, and a distribution path,
     calculates the KL divergence between the inference distributions and the true distributions,
     and returns the results as a dataframe."""
     
     true_distributions = load_json(dist_path, 'avg_softmax_activation_values.json')
     above_threshold, below_threshold = get_inf_distributions(model_name, data_path, output_path,
-                                                                beta=beta, constant=constant, threshold=threshold)
+                                                                temperature=temperature, constant=constant, threshold=threshold)
 
     kl_results = []
     below_threshold_labels = []
