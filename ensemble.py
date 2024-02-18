@@ -7,6 +7,8 @@ from inference import apply_model
 
 
 def get_model_results(model_ids, data_path=os.getenv("DATASET_TEST_PATH")):
+    """Takes a list of model ids and returns the results for each model as a list of lists.
+    Also returns the paths"""
     results = []
     paths = []
     columns = None
@@ -24,6 +26,8 @@ def get_model_results(model_ids, data_path=os.getenv("DATASET_TEST_PATH")):
 
 
 def ensemble_results(model_ids, data_path=os.getenv("DATASET_TEST_PATH")):
+    """Takes a list of model ids and applies them to the given data_path.
+    Returns the averaged results as a dataframe."""
     results, paths, columns = get_model_results(model_ids, data_path)
 
     # We have no softmax layer in our models, so we have to use averaging method to create the ensemble
@@ -37,6 +41,7 @@ def ensemble_results(model_ids, data_path=os.getenv("DATASET_TEST_PATH")):
 
 
 def save_confusion_matrix_as_heatmap(conf_matrix, labels, filename):
+    """Saves the given confusion matrix as a heatmap."""
     fig, ax = plt.subplots(figsize=(10, 7))
     sns.heatmap(conf_matrix, annot=True, fmt='.2f', xticklabels=labels, yticklabels=labels, ax=ax)
 

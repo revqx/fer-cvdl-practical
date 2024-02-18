@@ -1,6 +1,7 @@
 import json
 import os
 from datetime import datetime
+import numpy as np
 
 import typer
 import wandb
@@ -25,7 +26,7 @@ TRAIN_CONFIG = {
     # Options: LeNet, ResNet{18, 50}, EmotionModel2, CustomEmotionModel{3, 4, 5}, MobileNetV2
     "model_description": "",
     "pretrained_model": "",  # Options: model_id, model_name (for better wandb logging, use the model id)
-    "train_data": "RAF-DB",  # Options: RAF-DB, AffectNet
+    "train_data": "AffectNet",  # Options: RAF-DB, AffectNet
     "preprocessing": "ImageNetNormalization",  # Options: ImageNetNormalization, Grayscale
     "augmentations": "HorizontalFlip, RandomRotation, RandomCrop, TrivialAugmentWide, TrivialAugmentWide",
     # Options: "HorizontalFlip", "RandomRotation", "RandomCrop", "TrivialAugmentWide", "RandAugment"
@@ -37,14 +38,14 @@ TRAIN_CONFIG = {
     "scheduler": "StepLR",  # Options: ReduceLROnPlateau, StepLR
     "ReduceLROnPlateau_factor": 0.1,
     "ReduceLROnPlateau_patience": 2,
-    "StepLR_decay_rate": 0.9,
+    "StepLR_decay_rate": 0.95,
     "loss_function": "CrossEntropyLoss",  # Options: CrossEntropyLoss
     "class_weight_adjustments": [1, 1, 1, 1, 1, 1],  # Only applied if scheduler is "uniform"
     "optimizer": "Adam",  # Options: Adam, SGD
     "device": "cuda:0",  # Options: cuda, cpu, mps
     "DynamicModel_hidden_layers": 1,
     "DynamicModel_hidden_dropout": 0.2,
-    "max_epochs": "30",
+    "max_epochs": "10",
     "early_stopping_patience": "5",
 }
 
@@ -137,6 +138,8 @@ def clip(output_dir: str = "data/clipped_affect_net", use_rafdb_format: bool = F
 
 @app.command()
 def ensemble(data_path=os.getenv("DATASET_TEST_PATH")):
+    """Takes the data_path and applies the ensemble of models to it.
+    Returns the top1 and top3 accuracies and the confusion matrix."""
     model_ids = ENSEMBLE_MODELS
     ensemble_results_df = ensemble_results(model_ids, data_path)
 
@@ -164,23 +167,43 @@ def sweep(sweep_id: str = "", count: int = 40):
 
 @app.command()
 def true_value_distributions(model_name: str, data_path: str = os.getenv("DATASET_RAF_DB_PATH")):
+    """Takes the model_name and data_path, loads the activation values and calculates the true value distributions."""
     output_path = os.getenv("ACTIVATION_VALUES_PATH")
     activation_values_dict = get_activation_values(model_name, data_path, output_path)
     true_value_distributions = get_avg_softmax_activation_values(activation_values_dict, output_path,
-                                                                  constant=20, beta=2, threshold=22)
+                                                                  constant=20, beta=0.5, threshold=24)
 
 
 @app.command()
 def kl_analyze(model_name: str, data_path: str = os.getenv("DATASET_TEST_PATH")):
+    """Takes the model_name and data_path, loads the true value distributions and calculates the kl-divergences.
+    Returns the top1 and top3 accuracies and the confusion matrix."""
     output_path = os.getenv("ACTIVATION_VALUES_PATH")
     above_df, kl_divergence_df, be_labels, ab_labels = get_kl_results(model_name, output_path, data_path, constant = 20,
-                                                                   beta =2, threshold=22)
+                                                                   beta =0.5, threshold=24)
     print(len(ab_labels)) # outputs number of samples above threshold
-    top1, top3, pred_labels, true_labels, debug_labels = kl_divergence_accuracies(kl_divergence_df, above_df, be_labels, ab_labels)
-    print(debug_labels[-1:]) # outputs last set of kl-divergence values
+    top1, top3, pred_labels, true_labels, _ = kl_divergence_accuracies(kl_divergence_df, above_df, be_labels, ab_labels)
     conf_matrix = generate_confusion_matrix(true_labels, pred_labels)
     print(conf_matrix)
     print("Top 1 accuracy: ", top1, "Top 3 accuracy: ", top3)
+
+
+@app.command()
+def retrieve_val(run_dataset_version: str):
+    """Takes the run_dataset_version (logged in wandb under overview -> artifact outputs)
+      and retrieves the indices of the validation set as an artifact from wandb."""
+    entity = os.getenv("WANDB_ENTITY")
+    project = "cvdl"
+    api = wandb.Api()
+
+    artifact_name = f"{entity}/{project}/{run_dataset_version}"
+    artifact = api.artifact(artifact_name, type='dataset')
+    artifact_dir = artifact.download()
+    val_indices = np.load(os.path.join(artifact_dir, 'val_indices.npy'))
+
+    print(val_indices[0])
+
+    return val_indices
 
 
 if __name__ == "__main__":

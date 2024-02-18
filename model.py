@@ -196,32 +196,84 @@ class CustomEmotionModel4(nn.Module):
         return x
 
 
+def _create_conv_block_3(in_channels, out_channels, pool=True):
+    block = nn.Sequential(
+        nn.Conv2d(in_channels, out_channels, kernel_size=5, stride=1, padding=1),
+        nn.BatchNorm2d(out_channels),
+        nn.ReLU(inplace=True),
+        nn.Conv2d(out_channels, out_channels, kernel_size=5, stride=1, padding=1),
+        nn.BatchNorm2d(out_channels),
+        nn.ReLU(inplace=True)
+    )
+
+    if pool:
+        block.append(nn.MaxPool2d(kernel_size=2, stride=2))
+
+    return block
+
+
+def _create_conv_block_4(in_channels, out_channels, pool=True):
+    block = nn.Sequential(
+        nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1),
+        nn.ReLU(inplace=True),
+        nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1),
+        nn.ReLU(inplace=True),
+        nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1),
+        nn.ReLU(inplace=True),
+        nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1),
+        nn.ReLU(inplace=True)
+    )
+
+    if pool:
+        block.append(nn.MaxPool2d(kernel_size=2, stride=2))
+
+    return block
+
+
 class CustomEmotionModel5(nn.Module):
     def __init__(self, num_classes=6, **kwargs):
         super(CustomEmotionModel5, self).__init__()
 
-        self.conv_block1 = _create_conv_block(3, 64)
-        self.conv_block2 = _create_conv_block_2(64, 128)
-        self.conv_block3 = _create_conv_block(128, 256)
-        self.conv_block4 = _create_conv_block_2(256, 128,
+        self.conv_block1 = _create_conv_block(3, 32)
+        self.conv_block2 = _create_conv_block_3(32, 64)
+        self.conv_block3 = _create_conv_block_3(64, 128,
                                                 pool=False)
 
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
         self.flatten = nn.Flatten()
-        self.fc1 = nn.Linear(128, 64)
-        self.dropout = nn.Dropout(0.2)
-        self.fc2 = nn.Linear(64, num_classes)
+        self.fc1 = nn.Linear(128, num_classes)
 
     def forward(self, x):
         x = self.conv_block1(x)
         x = self.conv_block2(x)
         x = self.conv_block3(x)
-        x = self.conv_block4(x)
         x = self.avgpool(x)
         x = self.flatten(x)
-        x = F.relu(self.fc1(x))
-        x = self.dropout(x)
-        x = self.fc2(x)
+        x = self.fc1(x)
+
+        return x
+    
+
+class CustomEmotionModel6(nn.Module):
+    def __init__(self, num_classes=6, **kwargs):
+        super(CustomEmotionModel6, self).__init__()
+
+        self.conv_block1 = _create_conv_block_4(3, 32)
+        self.conv_block2 = _create_conv_block_4(32, 64)
+        self.conv_block3 = _create_conv_block_4(64, 128,
+                                                pool=False)
+
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.flatten = nn.Flatten()
+        self.fc1 = nn.Linear(128, num_classes)
+
+    def forward(self, x):
+        x = self.conv_block1(x)
+        x = self.conv_block2(x)
+        x = self.conv_block3(x)
+        x = self.avgpool(x)
+        x = self.flatten(x)
+        x = self.fc1(x)
 
         return x
 
@@ -247,6 +299,35 @@ class CustomEmotionModel7(nn.Module):
         x = self.fc1(x)
 
         return x
+    
+
+class ConvModel1(nn.Module):
+    def __init__(self, distribution=False, num_classes=6, **kwargs):
+        super(ConvModel1, self).__init__()
+
+        self.distribution = distribution
+
+        self.conv_block1 = _create_conv_block_4(3, 32)
+        self.conv_block2 = _create_conv_block_4(32, 64)
+        self.conv_block3 = _create_conv_block_4(64, 128, pool=False)
+
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.flatten = nn.Flatten() 
+        self.fc1 = nn.Linear(128, num_classes)
+
+    def forward(self, x):
+        x = self.conv_block1(x)
+        x = self.conv_block2(x)
+        x = self.conv_block3(x)
+        x = self.avgpool(x)
+        x2 = self.flatten(x)
+        x = self.fc1(x2)
+
+        if self.distribution:
+            return x2
+        else:
+            return x
+
 
 
 class DynamicModel(nn.Module):
@@ -307,5 +388,8 @@ MODELS = {
     "CustomEmotionModel4": CustomEmotionModel4,
     "CustomEmotionModel5": CustomEmotionModel5,
     "CustomEmotionModel6": CustomEmotionModel7,
-    "MobileNetV2": MobileNetV2
+    "CustomEmotionModel7": CustomEmotionModel6,
+    "MobileNetV2": MobileNetV2,
+    "CustomEmotionModel_3": CustomEmotionModel3,
+    "ConvModel1": ConvModel1
 }

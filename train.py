@@ -1,5 +1,6 @@
 import os
 from datetime import datetime
+import copy
 
 import numpy as np
 import torch
@@ -29,7 +30,7 @@ def train_model(config: dict):
         config["device"] = "cpu"
         print("CUDA not available. Using CPU instead.")
     device = torch.device(config["device"])
-
+    
     # Preprocessing and augmentations
     preprocessing = select_preprocessing(config["preprocessing"])
     augmentations = select_augmentations(config["augmentations"])
@@ -48,7 +49,7 @@ def train_model(config: dict):
     model.to(device)
 
     dataset = get_dataset(config["train_data"])
-    train_loader, val_loader = train_val_dataloaders(dataset, preprocessing, augmentations,
+    train_loader, val_loader, val_indices, val_img_paths = train_val_dataloaders(dataset, preprocessing, augmentations,
                                                      config["validation_split"], config["batch_size"],
                                                      config["sampler"], config["class_weight_adjustments"])
 
@@ -78,7 +79,18 @@ def train_model(config: dict):
     model_save_path = os.path.join(model_save_path, f"{config['model_name']}-{timestamp}-{wandb_id}.pth")
 
     # Train and evaluate the model
-    training_loop(model, train_loader, val_loader, criterion, optimizer, scheduler, config)
+    model  = training_loop(model, train_loader, val_loader, criterion, optimizer, scheduler, config)
+
+    # Save val_indices to a file
+    np.save('val_indices.npy', val_indices)
+
+    # Create a new wandb Artifact
+    artifact = wandb.Artifact('val_indices', type='dataset')
+    artifact.add_file('val_indices.npy')
+    wandb.run.log_artifact(artifact)
+
+    # move to cpu before starting next training loop
+    model = model.cpu()
 
     # Save model and transforms
     torch.save({"model": model.state_dict(), "preprocessing": preprocessing}, model_save_path)
@@ -88,15 +100,18 @@ def train_model(config: dict):
 
 
 def training_loop(model, train_loader, val_loader, criterion, optimizer, scheduler, config):
-    # Define the phases for which to run the training loop
     phases = ["train"]
     if val_loader is not None:
         phases.append("val")
 
-    for epoch in range(config["epochs"]):
-        wandb.log({"learning_rate": [group['lr'] for group in optimizer.param_groups][0]}, step=epoch + 1)
+    best_model_wts = copy.deepcopy(model.state_dict())
+    best_acc = 0.0
+    epochs_no_improve = 0
+    patience = int(config["early_stopping_patience"])
 
-        # Dictionaries to store metrics for each phase
+    for epoch in range(int(config["max_epochs"])):
+        wandb.log({"scheduler": [group['lr'] for group in optimizer.param_groups][0]}, step=epoch + 1)
+
         metrics = {
             "train_loss": 0.0,
             "train_acc": 0.0,
@@ -115,9 +130,9 @@ def training_loop(model, train_loader, val_loader, criterion, optimizer, schedul
             running_loss = 0.0
             running_corrects = 0
 
-            progress_bar = tqdm(data_loader, desc=f"Epoch {epoch + 1}/{config['epochs']} {phase}")
+            progress_bar = tqdm(data_loader, desc=f"Epoch {epoch + 1}/{config['max_epochs']} {phase}")
 
-            for inputs, labels in progress_bar:
+            for inputs, labels, _ in progress_bar:
                 inputs = inputs.to(config["device"])
                 labels = labels.to(config["device"])
 
@@ -131,7 +146,6 @@ def training_loop(model, train_loader, val_loader, criterion, optimizer, schedul
                     if phase == "train":
                         loss.backward()
                         optimizer.step()
-                
                 torch.cuda.empty_cache()
 
                 running_loss += loss.item() * inputs.size(0)
@@ -139,18 +153,45 @@ def training_loop(model, train_loader, val_loader, criterion, optimizer, schedul
 
                 progress_bar.set_postfix({"loss": f"{loss.item():.2f}"})
 
-            # Calculate and store metrics
             epoch_loss = running_loss / len(data_loader.dataset)
             epoch_acc = float(running_corrects) / len(data_loader.dataset)
             metrics[f"{phase}_loss"] = epoch_loss
             metrics[f"{phase}_acc"] = epoch_acc
 
-            print(f"{phase} loss: {epoch_loss}, acc: {epoch_acc}")
+            print(f"{phase} loss: {epoch_loss}")
+            print(f"{phase} acc: {epoch_acc}")
+
+            if phase == 'val' and epoch_acc > best_acc:
+                best_acc = epoch_acc
+                best_model_wts = copy.deepcopy(model.state_dict())
+                epochs_no_improve = 0
+            elif phase == 'val':
+                epochs_no_improve += 1
 
         scheduler.step(metrics["val_loss"] if config["scheduler"] == "ReduceLROnPlateau" else None)
-
-        # Log all metrics for the epoch at once
         wandb.log(metrics, step=epoch + 1)
+
+        if epochs_no_improve >= patience:
+            print(f"Early stopping triggered after {epoch + 1} epochs.")
+            break
+
+    model.load_state_dict(best_model_wts)
+
+    return model
+        
+
+def get_weighted_sampler(labels, class_weight_adjustments=None):
+    class_counts = np.bincount(labels)
+    class_weights = 1. / class_counts
+
+    if class_weight_adjustments is not None:
+        if len(class_weight_adjustments) != len(class_weights):
+            raise ValueError(f"Invalid class_weight_adjustments. Expected length: {len(class_weights)}")
+
+        class_weights *= class_weight_adjustments
+
+    weights = class_weights[labels]
+    return WeightedRandomSampler(weights, len(weights))
 
 
 def get_weighted_sampler(labels, class_weight_adjustments=None):
@@ -172,12 +213,14 @@ def train_val_dataloaders(dataset, preprocessing, augmentations, validation_spli
     if validation_split < 0 or validation_split >= 1:
         raise ValueError(f"Invalid validation_split: {validation_split}. It should be in the range [0, 1).")
 
-    images = [img for img, _ in dataset]
-    labels = [label for _, label in dataset]
+    images = [img for img, _, img_path in dataset]
+    labels = [label for _, label, _ in dataset]
+    img_paths = [img_path for _, _, img_path in dataset] #for retrieving 
 
     # Stratified train-test split
-    train_images, val_images, train_labels, val_labels = train_test_split(
-        images, labels, test_size=validation_split, stratify=labels)
+    indices = np.arange(len(images))
+    train_images, val_images, train_labels, val_labels, train_img_paths, val_img_paths, train_indices, val_indices = train_test_split(
+        images, labels, img_paths, indices, test_size=validation_split, stratify=labels)
 
     print(f"Prior train distribution (Σ: {len(train_images)}): {np.bincount(train_labels)}")
     print(f"Prior val distribution (Σ: {len(val_images)}): {np.bincount(val_labels)}")
@@ -185,12 +228,12 @@ def train_val_dataloaders(dataset, preprocessing, augmentations, validation_spli
     print("Applying augmentations to the train set...") if augmentations != [] else None
 
     # Create datasets
-    train_dataset = DatasetWrapper(train_images, train_labels, preprocessing, augmentations)
-    val_dataset = DatasetWrapper(val_images, val_labels, preprocessing)
+    train_dataset = DatasetWrapper(train_images, train_labels, train_img_paths, preprocessing, augmentations)
+    val_dataset = DatasetWrapper(val_images, val_labels, val_img_paths, preprocessing)
 
     train_sampler = val_sampler = None
     if sampler == "uniform":
-        augmented_train_labels = [label for _, label in train_dataset]
+        augmented_train_labels = [label for _, label, _ in train_dataset]
         print("Oversampling train and val datasets to balance class distribution...")
         train_sampler = get_weighted_sampler(augmented_train_labels, class_weight_adjustments)
         val_sampler = get_weighted_sampler(val_labels, class_weight_adjustments)
@@ -201,10 +244,10 @@ def train_val_dataloaders(dataset, preprocessing, augmentations, validation_spli
     val_loader = DataLoader(val_dataset, batch_size=batch_size, sampler=val_sampler, shuffle=val_sampler is None)
 
     print(f"Updated train distribution (Σ: {len(train_sampler)}): "
-          f"{np.bincount(np.concatenate([labels.numpy() for _, labels in train_loader]))}") \
+          f"{np.bincount(np.concatenate([labels.numpy() for _, labels, _ in train_loader]))}") \
         if augmentations != [] or sampler == "uniform" else None
     print(f"Updated val distribution (Σ: {len(val_sampler)}): "
-          f"{np.bincount(np.concatenate([labels.numpy() for _, labels in val_loader]))}") \
+          f"{np.bincount(np.concatenate([labels.numpy() for _, labels, _ in val_loader]))}") \
         if augmentations != [] or sampler == "uniform" else None
 
-    return train_loader, val_loader
+    return train_loader, val_loader, val_indices, val_img_paths
