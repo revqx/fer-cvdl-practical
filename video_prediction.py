@@ -2,7 +2,6 @@ import cv2
 import torch
 import numpy as np
 import dlib
-import time
 import onnxruntime as ort
 
 from gradcam import overlay
@@ -15,16 +14,33 @@ COLOR_GREEN = (0, 255, 0)
 COLOR_WHITE = (255, 255, 255)
 INFO_TEXT_SIZE = 0.7
 DEFAULT_FONT = cv2.FONT_HERSHEY_SIMPLEX
-FACE_CASCADE = cv2.CascadeClassifier("data/haarcascade_frontalface_default.xml")
-SHAPE_PREDICTOR = dlib.shape_predictor("data/shape_predictor_68_face_landmarks.dat")
+SHAPE_PREDICTOR = dlib.shape_predictor(
+    "models/shape_predictor_68_face_landmarks.dat")
 
+"""
+Disclaimer: Parts of the face detection code are based on the following repository:
+https://github.com/Linzaer/Ultra-Light-Fast-Generic-Face-Detector-1MB/
+
+It is a ultra light face detection model, which is based on the RFBNet architecture.
+
+The model can be downloaded from:
+https://github.com/Linzaer/Ultra-Light-Fast-Generic-Face-Detector-1MB/blob/master/models/onnx/version-RFB-320.onnx
+"""
 ONNX_PATH = "models/version-RFB-320.onnx"
+
 ORT_SESSION = ort.InferenceSession(ONNX_PATH)
 INPUT_NAME = ORT_SESSION.get_inputs()[0].name
 
 
 def initialize_model(model_name: str):
-    """Initialize the model with the given name"""
+    """Initialize the model with the given name
+
+    Args:
+        model_name (str) : the name of the model to be used
+
+    Returns (tuple) : the model, the preprocessing function, and the device
+    """
+
     _, model, preprocessing = load_model_and_preprocessing(model_name)
     model.eval()
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -34,7 +50,16 @@ def initialize_model(model_name: str):
 
 
 def initialize_cap(webcam: bool, cam_id: int, video_input: str):
-    """Initialize the camera or video input"""
+    """Initialize the camera or video input.
+
+    Args:
+        webcam (bool) : whether to use the webcam.
+        cam_id (int) : the camera id.
+        video_input (str) : the video input file, if not using the webcam.
+
+    Returns (cv2.VideoCapture) : the camera or video input.
+    """
+
     if webcam:
         cap = cv2.VideoCapture(cam_id)
     else:
@@ -46,8 +71,17 @@ def initialize_cap(webcam: bool, cam_id: int, video_input: str):
     return cap
 
 
-def initialize_out(cap: cv2.VideoCapture, file: str, codec: str = "XVID"):
-    """Initialize the video output"""
+def initialize_out(cap: cv2.VideoCapture, file: str, codec: str):
+    """Initialize the video output.
+
+    Args:
+        cap (cv2.VideoCapture) : the camera or video input.
+        file (str) : the output file.
+        codec (str) : the codec to be used.
+
+    Returns (cv2.VideoWriter) : the video output.
+    """
+
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH) + 0.5)
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT) + 0.5)
     fps = cap.get(cv2.CAP_PROP_FPS)
@@ -57,7 +91,13 @@ def initialize_out(cap: cv2.VideoCapture, file: str, codec: str = "XVID"):
 
 
 def top_prediction_with_label(predictions: torch.Tensor):
-    """Return the top prediction with its label"""
+    """Get the top prediction with its label and score.
+
+    Args:
+        predictions (torch.Tensor) : the predictions.
+
+    Returns (tuple) : the label and the score.
+    """
     top_prediction = torch.argmax(predictions, 1)
     label = LABEL_TO_STR[top_prediction.item()]
 
@@ -65,13 +105,22 @@ def top_prediction_with_label(predictions: torch.Tensor):
     return label, score
 
 
-def predict_emotions(
+def predict_expressions(
     image: np.ndarray,
     model: torch.nn.Module,
     preprocessing: torch.nn.Module,
     device: str,
-    ):
-    """Predict the emotions of the given image"""
+):
+    """Predict the expressions of the given image.
+
+    Args:
+        image (np.ndarray) : the image to be predicted.
+        model (torch.nn.Module) : the model to be used.
+        preprocessing (torch.nn.Module) : the preprocessing function.
+        device (str) : the device to be used.
+
+    Returns (torch.Tensor) : the predictions.
+    """
     resized_image = cv2.resize(image, (64, 64))
     normalized_image = resized_image / 255.0
     torch_image = (
@@ -96,8 +145,14 @@ def draw_landmarks(
     frame: np.ndarray,
     box: np.ndarray,
 ):
-    """Draw the landmarks on the frame"""
-    landmarks = SHAPE_PREDICTOR(frame, dlib.rectangle(box[0], box[1], box[2], box[3]))
+    """Draw the landmarks on the frame using dlib.
+
+    Args:
+        frame (np.ndarray) : the frame to be drawn on.
+        box (np.ndarray) : the bounding box of the face.
+    """
+    landmarks = SHAPE_PREDICTOR(
+        frame, dlib.rectangle(box[0], box[1], box[2], box[3]))
 
     for i in range(0, 68):
         x, y = landmarks.part(i).x, landmarks.part(i).y
@@ -109,6 +164,14 @@ def draw_explainability_overlay(
     id: int,
     picture_with_overlay: np.ndarray,
 ):
+    """Draw the explainability overlay on the frame.
+
+    Args:
+        frame (np.ndarray) : the frame to be drawn on.
+        id (int) : the id of the face.
+        picture_with_overlay (np.ndarray) : the picture with the overlay.
+    """
+
     OVERLAY_SIZE = 128
     picture_with_overlay = cv2.resize(
         picture_with_overlay, (OVERLAY_SIZE, OVERLAY_SIZE)
@@ -122,7 +185,7 @@ def draw_explainability_overlay(
         COLOR_BLUE,
         2,
     )
-    frame[-129 : -1, -129 - id * 129 : -1 - id * 129] = picture_with_overlay
+    frame[-129: -1, -129 - id * 129: -1 - id * 129] = picture_with_overlay
 
 
 def draw_info_box(
@@ -130,7 +193,13 @@ def draw_info_box(
     id: int,
     predictions: torch.Tensor,
 ):
-    """Draw the info box with the predictions"""
+    """Draw the info box with the predictions.
+
+    Args:
+        frame (np.ndarray) : the frame to be drawn on.
+        id (int) : the id of the face.
+        predictions (torch.Tensor) : the predictions.
+    """
     offset = id * 150 + 60
     cv2.rectangle(frame, (10, offset), (220, offset + 150), COLOR_WHITE, 2)
     cv2.putText(
@@ -143,96 +212,112 @@ def draw_info_box(
         2,
     )
 
-    for i, (emotion, score) in enumerate(
+    for i, (expression, score) in enumerate(
         zip(LABEL_TO_STR.values(), predictions[0])
     ):
         cv2.putText(
             frame,
-            f"{emotion}: {score:.2f}",
+            f"{expression}: {score:.2f}",
             (15, offset + 40 + i * 20),
             DEFAULT_FONT,
             INFO_TEXT_SIZE,
             COLOR_WHITE,
             2,
         )
-        
-        
-def get_emotion_color(emotion: str):
-    """Return the color for the given emotion"""
-    return COLOR_GREEN if emotion in ["happiness", "surprise"] else COLOR_RED
+
+
+def get_expression_color(expression: str):
+    """Return the color for the given expression.
+
+    Args:
+        expression (str): the expression.
+
+    Returns (tuple): the color.
+    """
+    return COLOR_GREEN if expression in ["happiness", "surprise"] else COLOR_RED
 
 
 def area_of(left_top, right_bottom):
-  """Compute the areas of rectangles given two corners.
+    """Compute the areas of rectangles given two corners.
 
-  Args:
-    left_top (N, 2): left top corner.
-    right_bottom (N, 2): right bottom corner.
+    Code from: https://github.com/Linzaer/Ultra-Light-Fast-Generic-Face-Detector-1MB/blob/master/vision/utils/box_utils.py
 
-  Returns:
-    area (N): return the area.
-  """
-  hw = np.clip(right_bottom - left_top, 0.0, None)
-  return hw[..., 0] * hw[..., 1]
+    Args:
+        left_top (N, 2): left top corner.
+        right_bottom (N, 2): right bottom corner.
 
-  
+    Returns:
+        area (N): return the area.
+    """
+    hw = np.clip(right_bottom - left_top, 0.0, None)
+    return hw[..., 0] * hw[..., 1]
+
+
 def iou_of(boxes0, boxes1, eps=1e-5):
-  """Return intersection-over-union (Jaccard index) of boxes.
+    """Return intersection-over-union (Jaccard index) of boxes.
 
-  Args:
-    boxes0 (N, 4): ground truth boxes.
-    boxes1 (N or 1, 4): predicted boxes.
-    eps: a small number to avoid 0 as denominator.
-  Returns:
-    iou (N): IoU values.
-  """
-  overlap_left_top = np.maximum(boxes0[..., :2], boxes1[..., :2])
-  overlap_right_bottom = np.minimum(boxes0[..., 2:], boxes1[..., 2:])
+    Code from: https://github.com/Linzaer/Ultra-Light-Fast-Generic-Face-Detector-1MB/blob/master/vision/utils/box_utils.py
 
-  overlap_area = area_of(overlap_left_top, overlap_right_bottom)
-  area0 = area_of(boxes0[..., :2], boxes0[..., 2:])
-  area1 = area_of(boxes1[..., :2], boxes1[..., 2:])
-  
-  return overlap_area / (area0 + area1 - overlap_area + eps)
-  
+    Args:
+        boxes0 (N, 4): ground truth boxes.
+        boxes1 (N or 1, 4): predicted boxes.
+        eps: a small number to avoid 0 as denominator.
+
+    Returns:
+        iou (N): IoU values.
+    """
+    overlap_left_top = np.maximum(boxes0[..., :2], boxes1[..., :2])
+    overlap_right_bottom = np.minimum(boxes0[..., 2:], boxes1[..., 2:])
+
+    overlap_area = area_of(overlap_left_top, overlap_right_bottom)
+    area0 = area_of(boxes0[..., :2], boxes0[..., 2:])
+    area1 = area_of(boxes1[..., :2], boxes1[..., 2:])
+
+    return overlap_area / (area0 + area1 - overlap_area + eps)
+
+
 def hard_nms(box_scores, iou_threshold, top_k=-1, candidate_size=200):
-  """Apply Hard Non-Maximum Suppression to filter relevant boxes based on scores.
+    """Apply Hard Non-Maximum Suppression to filter relevant boxes based on scores.
 
-  Args:
-      box_scores (N, 5): boxes in corner-form and probabilities.
-      iou_threshold: intersection over union threshold.
-      top_k: keep top_k results. If k <= 0, keep all the results.
-      candidate_size: only consider the candidates with the highest scores.
-  Returns:
-        picked: a list of indexes of the kept boxes
-  """
-  scores = box_scores[:, -1]
-  boxes = box_scores[:, :-1]
-  picked = []
-  indexes = np.argsort(scores)
-  indexes = indexes[-candidate_size:]
-  
-  while len(indexes) > 0:
-    current = indexes[-1]
-    picked.append(current)
-    if 0 < top_k == len(picked) or len(indexes) == 1:
-      break
-  
-    current_box = boxes[current, :]
-    indexes = indexes[:-1]
-    rest_boxes = boxes[indexes, :]
-    iou = iou_of(
-      rest_boxes,
-      np.expand_dims(current_box, axis=0),
-    )
-    indexes = indexes[iou <= iou_threshold]
+    Code from: https://github.com/Linzaer/Ultra-Light-Fast-Generic-Face-Detector-1MB/blob/master/vision/utils/box_utils.py
 
-  return box_scores[picked, :]
+    Args:
+        box_scores (N, 5): boxes in corner-form and probabilities.
+        iou_threshold: intersection over union threshold.
+        top_k: keep top_k results. If k <= 0, keep all the results.
+        candidate_size: only consider the candidates with the highest scores.
+
+    Returns:
+            picked: a list of indexes of the kept boxes
+    """
+    scores = box_scores[:, -1]
+    boxes = box_scores[:, :-1]
+    picked = []
+    indexes = np.argsort(scores)
+    indexes = indexes[-candidate_size:]
+
+    while len(indexes) > 0:
+        current = indexes[-1]
+        picked.append(current)
+        if 0 < top_k == len(picked) or len(indexes) == 1:
+            break
+
+        current_box = boxes[current, :]
+        indexes = indexes[:-1]
+        rest_boxes = boxes[indexes, :]
+        iou = iou_of(
+            rest_boxes,
+            np.expand_dims(current_box, axis=0),
+        )
+        indexes = indexes[iou <= iou_threshold]
+
+    return box_scores[picked, :]
 
 
 def predict_face(width, height, confidences, boxes, prob_threshold, iou_threshold=0.3, top_k=-1):
-  """
-    Perform post-processing for face detection.
+    """Perform post-processing for face detection.
+
+    Code from: https://github.com/Linzaer/Ultra-Light-Fast-Generic-Face-Detector-1MB/blob/master/run_video_face_detect_onnx.py
 
     Args:
         width: Width of the image.
@@ -246,35 +331,37 @@ def predict_face(width, height, confidences, boxes, prob_threshold, iou_threshol
     Returns:
         Picked bounding box probabilities and labels.
     """
-  boxes = boxes[0]
-  confidences = confidences[0]
-  picked_box_probs = []
-  picked_labels = []
-  
-  for class_index in range(1, confidences.shape[1]):
-      probs = confidences[:, class_index]
-      mask = probs > prob_threshold
-      probs = probs[mask]
-      
-      if probs.shape[0] == 0:
-          continue
-      
-      subset_boxes = boxes[mask, :]
-      box_probs = np.concatenate([subset_boxes, probs.reshape(-1, 1)], axis=1)
-      box_probs = hard_nms(box_probs, iou_threshold=iou_threshold, top_k=top_k)
-      picked_box_probs.append(box_probs)
-      picked_labels.extend([class_index] * box_probs.shape[0])
-      
-  if not picked_box_probs:
-      return np.array([]), np.array([]), np.array([])
-  
-  picked_box_probs = np.concatenate(picked_box_probs)
-  picked_box_probs[:, 0] *= width
-  picked_box_probs[:, 1] *= height
-  picked_box_probs[:, 2] *= width
-  picked_box_probs[:, 3] *= height
-  
-  return picked_box_probs[:, :4].astype(np.int32), np.array(picked_labels), picked_box_probs[:, 4]
+    boxes = boxes[0]
+    confidences = confidences[0]
+    picked_box_probs = []
+    picked_labels = []
+
+    for class_index in range(1, confidences.shape[1]):
+        probs = confidences[:, class_index]
+        mask = probs > prob_threshold
+        probs = probs[mask]
+
+        if probs.shape[0] == 0:
+            continue
+
+        subset_boxes = boxes[mask, :]
+        box_probs = np.concatenate(
+            [subset_boxes, probs.reshape(-1, 1)], axis=1)
+        box_probs = hard_nms(
+            box_probs, iou_threshold=iou_threshold, top_k=top_k)
+        picked_box_probs.append(box_probs)
+        picked_labels.extend([class_index] * box_probs.shape[0])
+
+    if not picked_box_probs:
+        return np.array([]), np.array([]), np.array([])
+
+    picked_box_probs = np.concatenate(picked_box_probs)
+    picked_box_probs[:, 0] *= width
+    picked_box_probs[:, 1] *= height
+    picked_box_probs[:, 2] *= width
+    picked_box_probs[:, 3] *= height
+
+    return picked_box_probs[:, :4].astype(np.int32), np.array(picked_labels), picked_box_probs[:, 4]
 
 
 def process_frame(
@@ -282,60 +369,23 @@ def process_frame(
     model: torch.nn.Module,
     device: str,
     preprocessing: str,
-    emotion_score: dict,
     show_explainability: bool,
     show_landmarks: bool,
     show_info: bool,
 ):
-    """Process the frame and return the frame with the predicted emotions"""    
-    print("--------------------")
-    process_time = time.time()
-    num_faces = 0
-    
-    # slow_haar_time = time.time()
-    # slow_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    # faces = FACE_CASCADE.detectMultiScale(slow_gray, 1.3, 5)
-    # print(f"Slow Haar / Face detection time: {time.time() - slow_haar_time}")
-    # for (x, y, w, h) in faces:
-    #     cv2.rectangle(frame, (x, y), (x + w, y + h), COLOR_RED, 2)
-        
-    ##############################################
-    # start of fast haar face detection
-    
-    # fast_haar_time = time.time()
-    # rescaled_image = cv2.resize(frame, (320, 240))
-    # rescaled_gray = cv2.cvtColor(rescaled_image, cv2.COLOR_BGR2GRAY)
-    # haar_faces = FACE_CASCADE.detectMultiScale(rescaled_gray, 1.3, 5)
-    # print(f"Fast Haar / Face detection time: {time.time() - fast_haar_time}")
-    
-    # for i, (x, y, w, h) in enumerate(haar_faces):
-    #     x_scale = frame.shape[1] / 320
-    #     y_scale = frame.shape[0] / 240
-    #     mean_width_original = (w / 2) * x_scale
-    #     mean_height_original = (h / 2) * y_scale
-    #     center = (
-    #         int(x * x_scale + mean_width_original),
-    #         int(y * y_scale + mean_height_original),
-    #     )
-    #     size = int(max(mean_height_original, mean_width_original))
-    #     squared_box = [
-    #         int(center[0] - size),
-    #         int(center[1] - size),
-    #         int(center[0] + size),
-    #         int(center[1] + size),
-    #     ]
-        
-    #     cv2.rectangle(frame, (squared_box[0], squared_box[1]), (squared_box[2], squared_box[3]), COLOR_BLUE, 2)
+    """Process the frame and return the frame with the predicted expressions, landmarks, and explainability.
 
-    
-    # end of fast haar face detection
-    ##############################################
-    
-    
-    ##############################################
-    # start of neural face detection
-    
-    neural_fd_start = time.time()
+    Args:
+        frame (np.ndarray) : the frame to be processed.
+        model (torch.nn.Module) : the model to be used.
+        device (str) : the device to be used.
+        preprocessing (str) : the preprocessing function.
+        show_explainability (bool) : whether to show the explainability.
+        show_landmarks (bool) : whether to show the landmarks.
+        show_info (bool) : whether to show the info.
+    """
+    num_faces = 0
+
     image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     image = cv2.resize(image, (320, 240))
     image = (image - np.array([127, 127, 127])) / 128
@@ -343,45 +393,34 @@ def process_frame(
     image = np.expand_dims(image, 0)
     image = image.astype(np.float32)
 
-
     threshold = 0.7
     confidences, boxes = ORT_SESSION.run(None, {INPUT_NAME: image})
-    boxes, _, _ = predict_face(frame.shape[1], frame.shape[0], confidences, boxes, threshold)
-    print(f"Neural / Face detection time: {time.time() - neural_fd_start}")
-    
+    boxes, _, _ = predict_face(
+        frame.shape[1], frame.shape[0], confidences, boxes, threshold)
+
     for i in range(boxes.shape[0]):
         box = boxes[i, :]
         mean_height = (box[3] - box[1]) / 2
         mean_width = (box[2] - box[0]) / 2
         center = (box[0] + mean_width, box[1] + mean_height)
         size = int(max(mean_height, mean_width))
-        squared_box = [int(center[0] - size), int(center[1] - size), int(center[0] + size), int(center[1] + size)]
-
-    ## end of neural face detection
-    ##############################################
-    
-    
-    # loop over the detected faces
-        roi = frame[squared_box[1] : squared_box[3], squared_box[0] : squared_box[2]]
+        squared_box = [int(center[0] - size), int(center[1] - size),
+                       int(center[0] + size), int(center[1] + size)]
+        roi = frame[squared_box[1]: squared_box[3],
+                    squared_box[0]: squared_box[2]]
         if roi.size == 0:
             continue
-        
+
         num_faces += 1
 
-        prediction_time = time.time()
         if show_explainability:
             predictions, picture_with_overlay = overlay(roi, model)
             predictions = torch.nn.functional.softmax(predictions, dim=1)
-            print(
-                f"Prediction time (with explainability): {time.time() - prediction_time}"
-            )
         else:
-            predictions = predict_emotions(roi, model, preprocessing, device)
-            print(f"Emotion prediction time: {time.time() - prediction_time}")
+            predictions = predict_expressions(
+                roi, model, preprocessing, device)
 
-        emotion, score = top_prediction_with_label(predictions)
-        emotion_score[emotion]["total_score"] += score
-        emotion_score[emotion]["count"] += 1
+        expression, _ = top_prediction_with_label(predictions)
 
         if show_info and i < 3:
             draw_info_box(frame, i, predictions)
@@ -390,18 +429,15 @@ def process_frame(
             draw_explainability_overlay(frame, i, picture_with_overlay)
 
         if show_landmarks:
-            dlib_landmark_start = time.time()
             draw_landmarks(frame, squared_box)
-            print(f"Landmark drawing time: {time.time() - dlib_landmark_start}")
 
-        print(f"Emotion: {emotion} ({100 * score:.2f}%)")
         cv2.putText(
             frame,
-            f"Emotion: {emotion}",
+            f"Expression: {expression}",
             (squared_box[0], squared_box[1] - 10),
             DEFAULT_FONT,
-            0.7,
-            get_emotion_color(emotion),
+            INFO_TEXT_SIZE,
+            get_expression_color(expression),
             2,
         )
         cv2.rectangle(
@@ -411,7 +447,7 @@ def process_frame(
             COLOR_BLUE,
             2,
         )
-    
+
     if show_info:
         cv2.putText(
             frame,
@@ -419,10 +455,9 @@ def process_frame(
             (10, 30),
             DEFAULT_FONT,
             1.1,
-            COLOR_GREEN,
+            COLOR_WHITE,
             2,
         )
-    print(f"Total processing time: {time.time() - process_time}")
 
     return frame
 
@@ -439,15 +474,22 @@ def main_loop(
     show_info: bool,
     out: cv2.VideoWriter,
 ):
-    """Main loop for video prediction"""
+    """Main loop for video prediction.
+
+    Args:
+        cap (cv2.VideoCapture) : the camera or video input.
+        model (torch.nn.Module) : the model to be used.
+        device (str) : the device to be used.
+        preprocessing (str) : the preprocessing function.
+        webcam (bool) : whether to use the webcam.
+        show_processing (bool) : whether to show the processing.
+        show_explainability (bool) : whether to show the explainability.
+        show_landmarks (bool) : whether to show the landmarks.
+        show_info (bool) : whether to show the info.
+        out (cv2.VideoWriter) : the video output.
+    """
     print("Starting video prediction...")
 
-    emotion_scores = {
-        emotion: {"total_score": 0, "count": 0} for emotion in LABEL_TO_STR.values()
-    }
-
-    prev_frame_time = 0
-    new_frame_time = 0
     while True:
         has_frame, frame = cap.read()
 
@@ -462,24 +504,14 @@ def main_loop(
             model,
             device,
             preprocessing,
-            emotion_scores,
             show_explainability,
             show_landmarks,
             show_info,
         )
 
-        new_frame_time = time.time()
-        time_diff = new_frame_time - prev_frame_time
-        fps = 1 / (time_diff)
-        prev_frame_time = new_frame_time
-
         if show_processing:
-            # make window resizable
-            cv2.namedWindow("Facial Emotion Recognition", cv2.WINDOW_NORMAL)
-            cv2.imshow("Facial Emotion Recognition", processed_frame)
-
-        width, height = cv2.getWindowImageRect("Facial Emotion Recognition")[2:4]
-        print(f"{int(fps)} FPS - {time_diff:.3f} ms - {width}x{height}")
+            cv2.namedWindow("Facial Expression Recognition", cv2.WINDOW_NORMAL)
+            cv2.imshow("Facial Expression Recognition", processed_frame)
 
         if not webcam:
             out.write(processed_frame)
@@ -494,7 +526,7 @@ def main_loop(
         window_closed = (
             show_processing
             and cv2.getWindowProperty(
-                "Facial Emotion Recognition", cv2.WND_PROP_VISIBLE
+                "Facial Expression Recognition", cv2.WND_PROP_VISIBLE
             )
             < 1
         )
@@ -502,12 +534,6 @@ def main_loop(
             print("Video prediction interrupted.")
             break
 
-    for emotion, score in emotion_scores.items():
-        average_score = (
-            score["total_score"] / score["count"] if score["count"] > 0 else 0
-        )
-        print(f"Emotion: {emotion}, Average Score: {average_score:.2f}")
-        
     print("Video prediction finished.")
 
 
@@ -521,15 +547,26 @@ def make_video_prediction(
     show_explainability: bool,
     show_landmarks: bool,
     show_info: bool,
+    codec: str,
 ):
-    """Make video prediction using the model with the given name"""
+    """Make video prediction using the model with the given name.
 
+    Args:
+        model_name (str) : the name of the model to be used.
+        webcam (bool) : whether to use the webcam.
+        cam_id (int) : the camera id.
+        video_input (str) : the video input file, if not using the webcam.
+        output_file (str) : the output file.
+        show_processing (bool) : whether to show the processing.
+        show_explainability (bool) : whether to show the explainability.
+        show_landmarks (bool) : whether to show the landmarks.
+        show_info (bool) : whether to show the info.
+        codec (str) : the fourcc codec to be used for the output video.
+    """
     model, preprocessing, device = initialize_model(model_name)
     cap = initialize_cap(webcam, cam_id, video_input)
+    out = initialize_out(cap, output_file, codec) if not webcam else None
 
-    out = initialize_out(cap, output_file) if not webcam else None
-
-    # try:
     main_loop(
         cap,
         model,
@@ -542,9 +579,6 @@ def make_video_prediction(
         show_info,
         out,
     )
-    # except Exception as e:
-    # print(e)
-    # finally:
     cap.release()
     if not webcam:
         out.release()

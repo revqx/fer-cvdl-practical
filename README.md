@@ -47,18 +47,20 @@ Optional Arguments:
 ## Demo
 
 ```bash
-python main.py demo <model-identifier> 
+python main.py demo <model-identifier>
 ```
 
 Optional arguments:
 
 - `<webcam>` use webcam as input, default is `False`
 - `cam-id` specify the webcam id, default is `0`
-- `<input-video>` set a video file as input, required if not using webcam
+- `<input-video>` set a video file as input, required if not using webcam, will also generate an output video
 - `<show-processing>` show the processing of the video, default is `True`
 - `<explainability>` show the explanation of the prediction, default is `False`
-- `<landmakrs>` show remarkable landmarks, default is `False`
+- `<landmarks>` show remarkable landmarks, default is `False`
 - `<info>` show information about the prediction, default is `True`
+- `<codec>` specify the fourcc codec for the output video, default is `XVID`
+- `<output-extension>` specify the output extension for the video, default is `avi`, depending on the codec
 
 ## Other utilities
 
@@ -93,5 +95,4 @@ python main.py initialize_sweep <user_name>
 Optional Arguments:
 
 - `<count>` number of runs to be performed on the sweep
-- sweep config to be defined in `sweep.py` 
-
+- sweep config to be defined in `sweep.py`

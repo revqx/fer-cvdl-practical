@@ -115,8 +115,11 @@ def analyze(model_name: str, data_path: str = os.getenv("DATASET_TEST_PATH")):
 
 
 @app.command()
-def demo(model_name: str, webcam: bool = False, cam_id: int = 0, input_video: str = "",
-         show_processing: bool = True, explainability: bool = False, landmarks: bool = False, info: bool = True):
+def demo(model_name: str, webcam: bool = False, cam_id: int = 0,
+         input_video: str = "",
+         show_processing: bool = True, explainability: bool = False,
+         landmarks: bool = False, info: bool = True, codec: str = "XVID",
+         output_ext: str = "avi"):
     if not webcam and input_video.strip() == "":
         raise typer.BadParameter("Please specify an input video when not using the camera.")
 
@@ -126,32 +129,26 @@ def demo(model_name: str, webcam: bool = False, cam_id: int = 0, input_video: st
         cap.release()
         if not is_valid:
             raise typer.BadParameter("Please specify a valid camera id")
-        
+
     if not os.path.exists("models/version-RFB-320.onnx"):
         raise FileNotFoundError("version-RFB-320.onnx not found. "
-                                "Please download the file from " 
+                                "Please download the file from "
                                 "https://github.com/Linzaer/Ultra-Light-Fast-Generic-Face-Detector-1MB/blob/master/models/onnx/version-RFB-320.onnx "
                                 "and put it to the /models directory.")
-        
-    if not os.path.exists("data/haarcascade_frontalface_default.xml"):
-        raise FileNotFoundError("haarcascade_frontalface_default.xml not found. "
-                                "Please download the file from " 
-                                "https://github.com/opencv/opencv/data/haarcascades/haarcascade_frontalface_default.xml "
-                                "and put it to the /data directory.")
-        
-    if landmarks and not os.path.exists("data/shape_predictor_68_face_landmarks.dat"):
+
+    if landmarks and not os.path.exists("models/shape_predictor_68_face_landmarks.dat"):
         raise FileNotFoundError("shape_predictor_68_face_landmarks.dat not found. "
-                                "Please download the file from " 
+                                "Please download the file from "
                                 "http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2 "
-                                "and extract it to the /data directory.")
+                                "and extract it to the /models directory.")
 
     output_dir = os.getenv("VIDEO_OUTPUT_PATH")
     if not os.path.exists(output_dir) and not webcam:
         os.makedirs(output_dir, exist_ok=True)
 
     timestamp = datetime.now().strftime("%Y%m%dT%H%M%S")
-    output_file = os.path.join(output_dir, f"{model_name}-{timestamp}.avi")
-    make_video_prediction(model_name, webcam, cam_id, input_video, output_file, show_processing, explainability, landmarks, info)
+    output_file = os.path.join(output_dir, f"{model_name}-{timestamp}.{output_ext}")
+    make_video_prediction(model_name, webcam, cam_id, input_video, output_file, show_processing, explainability, landmarks, info, codec)
 
 
 @app.command()
