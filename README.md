@@ -95,5 +95,27 @@ Optional Arguments:
 
 - `<count>` number of runs to be performed on the sweep
 - `<sweep-id>` sweep id
-- sweep config to be defined in `sweep.py` 
+- sweep config to be defined in `sweep.py`
 
+### Prediction with activation values distribution
+#### Get true value distributions
+
+```bash
+python main.py true-value-distributions <model-identifier>
+```
+
+Optional Arguments:
+
+- `<data_path>` path to the data to be get the true value distributions from, default set to RAF-DB (see `.env`)
+- `<output_path>` path for distributions and plots to be saved, default set to activation_values (see `.env`)
+  
+#### Analyze model performance with kl-divergence
+
+```bash
+kl-analyze <model-identifier>
+```
+
+Optional arguments:
+
+- `<data_path>` path to the data to be get the true value distributions from, default set to validation set (see `.env`)
+- `<output_path>` path for distributions and plots to be saved, default set to activation_values (see `.env`)

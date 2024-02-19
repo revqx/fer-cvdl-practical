@@ -1,25 +1,26 @@
-import json
 import os
 from datetime import datetime
 
+import numpy as np
 import typer
 import wandb
 from dotenv import load_dotenv
 
 from analyze import accuracies, confusion_matrix, analyze_run_and_upload
 from clip_affect_net import clip_affect_net_faces
-from ensemble import ensemble_results
+from distribution import get_activation_values, get_kl_results, kl_divergence_accuracies, \
+    get_avg_softmax_activation_values
+from ensemble import ensemble_results, save_confusion_matrix_as_heatmap
 from inference import apply_model
 from sweep import get_sweep_config
 from train import train_model
-from utils import label_from_path
 from video_prediction import make_video_prediction
 
 load_dotenv()
 app = typer.Typer()
 
 TRAIN_CONFIG = {
-    "model_name": "CustomEmotionModel6",
+    "model_name": "ConvModel1",
     # Options: LeNet, ResNet{18, 50}, EmotionModel2, CustomEmotionModel{3, 4, 5}, MobileNetV2
     "model_description": "",
     "pretrained_model": "",  # Options: model_id, model_name (for better wandb logging, use the model id)
@@ -28,24 +29,27 @@ TRAIN_CONFIG = {
     "augmentations": "HorizontalFlip, RandomRotation, RandomCrop, TrivialAugmentWide, TrivialAugmentWide",
     # Options: "HorizontalFlip", "RandomRotation", "RandomCrop", "TrivialAugmentWide", "RandAugment"
     "validation_split": 0.1,
-    "learning_rate": 0.001,
-    "epochs": 15,
+    "learning_rate": 0.0001,
     "batch_size": 32,
     "sampler": "uniform",  # Options: uniform
-    "scheduler": "ReduceLROnPlateau",  # Options: ReduceLROnPlateau, StepLR
+    "scheduler": "StepLR",  # Options: ReduceLROnPlateau, StepLR
     "ReduceLROnPlateau_factor": 0.1,
     "ReduceLROnPlateau_patience": 2,
     "StepLR_decay_rate": 0.95,
     "loss_function": "CrossEntropyLoss",  # Options: CrossEntropyLoss
     "class_weight_adjustments": [1, 1, 1, 1, 1, 1],  # Only applied if scheduler is "uniform"
     "optimizer": "Adam",  # Options: Adam, SGD
-    "device": "mps",  # Options: cuda, cpu, mps
+    "device": "cuda:0",  # Options: cuda, cpu, mps
     "DynamicModel_hidden_layers": 1,
-    "DynamicModel_hidden_dropout": 0.2
+    "DynamicModel_hidden_dropout": 0.2,
+    "max_epochs": "10",
+    "early_stopping_patience": "5",
 }
 
 # In case you want to create an ensemble model, add the model names/id here
-ENSEMBLE_MODELS = ["h8txabjg", "odyx0ott", "8uu89woq"]
+# Current best ensemble with 82,16 %Top1
+# ["8cp5wrtr_1", "zpwmo75q", "zpwmo75q", "npl99ug4", "h1zooiju", "1p4v64b3", "1eq7h5pb"]
+ENSEMBLE_MODELS = ["8cp5wrtr_1", "zpwmo75q", "zpwmo75q", "npl99ug4", "h1zooiju", "1p4v64b3", "1eq7h5pb"]
 
 
 @app.command()
@@ -83,7 +87,7 @@ def inference(model_name: str, data_path: str, output_path: str):
     folder_name = data_path.split("/")[-1]
     output_file_name = f"{folder_name}-{timestamp}-{model_id}.csv"
     print(f"Writing results to {output_file_name}.")
-    results.to_csv(os.path.join(output_path, output_file_name), idx=False)
+    results.to_csv(os.path.join(output_path, output_file_name), index=False)
 
 
 @app.command()
@@ -93,6 +97,8 @@ def analyze(model_name: str, data_path: str = os.getenv("DATASET_TEST_PATH")):
     conf_matrix = confusion_matrix(results)
     print(conf_matrix)
     print(top_n)
+
+    return model_id, top_n, conf_matrix
 
 
 @app.command()
@@ -131,11 +137,18 @@ def clip(output_dir: str = "data/clipped_affect_net", use_rafdb_format: bool = F
 
 @app.command()
 def ensemble(data_path=os.getenv("DATASET_TEST_PATH")):
+    """Takes the data_path and applies the ensemble of models to it.
+    Returns the top1 and top3 accuracies and the confusion matrix."""
     model_ids = ENSEMBLE_MODELS
     ensemble_results_df = ensemble_results(model_ids, data_path)
 
     top_n = accuracies(ensemble_results_df)
     conf_matrix = confusion_matrix(ensemble_results_df)
+
+    labels = [col for col in ensemble_results_df.columns if col != 'path']
+    heatmap_filename = "ensemble-confusion-matrix-dark.png"
+    save_confusion_matrix_as_heatmap(conf_matrix, labels, heatmap_filename)
+
     print(conf_matrix)
     print(top_n)
 
@@ -152,29 +165,43 @@ def sweep(sweep_id: str = "", count: int = 40):
 
 
 @app.command()
-def get_activation(model_name: str, data_path: str = os.getenv("DATASET_TEST_PATH"),
-                   output_path: str = os.getenv("ACTIVATION_VALUES_PATH")):
-    model_id, results = apply_model(model_name, data_path)
-    labels = []
-    activation_values_dict = {}
+def true_value_distributions(model_name: str, data_path: str = os.getenv("DATASET_RAF_DB_PATH")):
+    """Takes the model_name and data_path, loads the activation values and calculates the true value distributions."""
+    output_path = os.getenv("ACTIVATION_VALUES_PATH")
+    activation_values_dict = get_activation_values(model_name, data_path, output_path)
+    get_avg_softmax_activation_values(activation_values_dict, output_path,
+                                      constant=20, temperature=0.5, threshold=24)
 
-    for path, *values in results.values:
-        label = label_from_path(path)
-        labels.append(label)
-        if label is None:
-            raise ValueError(f"Could not find label in path {path}.")
+@app.command()
+def kl_analyze(model_name: str, data_path: str = os.getenv("DATASET_TEST_PATH")):
+    """Takes the model_name and data_path, loads the true value distributions and calculates the kl-divergences.
+    Returns the top1 and top3 accuracies and the confusion matrix."""
+    output_path = os.getenv("ACTIVATION_VALUES_PATH")
+    above_df, kl_divergence_df, be_labels, ab_labels = get_kl_results(model_name, output_path, data_path, constant=20,
+                                                                      temperature=0.5, threshold=24)
+    print(len(ab_labels))  # outputs number of samples above threshold
+    top1, top3, pred_labels, true_labels, _ = kl_divergence_accuracies(kl_divergence_df, above_df, be_labels, ab_labels)
+    conf_matrix = confusion_matrix(true_labels, pred_labels)
+    print(conf_matrix)
+    print("Top 1 accuracy: ", top1, "Top 3 accuracy: ", top3)
 
-        if model_name not in activation_values_dict:
-            activation_values_dict[model_name] = {}
 
-        if label not in activation_values_dict[model_name]:
-            activation_values_dict[model_name][label] = []
+@app.command()
+def retrieve_val(run_dataset_version: str):
+    """Takes the run_dataset_version (logged in wandb under overview -> artifact outputs)
+      and retrieves the indices of the validation set as an artifact from wandb."""
+    entity = os.getenv("WANDB_ENTITY")
+    project = "cvdl"
+    api = wandb.Api()
 
-        activation_values_dict[model_name][label].append(values)
+    artifact_name = f"{entity}/{project}/{run_dataset_version}"
+    artifact = api.artifact(artifact_name, type='dataset')
+    artifact_dir = artifact.download()
+    val_indices = np.load(os.path.join(artifact_dir, 'val_indices.npy'))
 
-    # save values locally as a json file (folder path from env file)
-    with open(f"{output_path}\\activation_values.json", "w") as f:
-        json.dump(activation_values_dict, f)
+    print(val_indices[0])
+
+    return val_indices
 
 
 if __name__ == "__main__":
