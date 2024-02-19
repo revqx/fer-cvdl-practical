@@ -6,3 +6,9 @@ __pycache__
 models/*
 wandb/*
 data/*
+cascades/*
+activation_values/*
+sweep_models/*
+sweep_model_7/*
+analyze_results/*
+analyze_results_7/*

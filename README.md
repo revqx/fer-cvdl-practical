@@ -64,10 +64,10 @@ Optional arguments:
 
 ## Other utilities
 
-### Clipping faces from AffectNet
+### Clip faces from AffectNet
 
 ```bash
-python main.py clipped
+python main.py clip
 ```
 
 Optional Arguments:
@@ -76,7 +76,7 @@ Optional Arguments:
   in `.env`
 - `<use-rafdb-format>` use the RAF-DB format for the output, default is `False`
 
-### Creating an ensemble of models
+### Create an ensemble of models
 
 ```bash
 python main.py ensemble
@@ -86,13 +86,37 @@ Optional Arguments:
 
 - `<data-path>` path to the data to be analyzed, default is the validation set (see `.env`)
 
-### Initializing a hyperparametersweep
+### Initialize a hyperparameter sweep with wandb
 
 ```bash
-python main.py initialize_sweep <user_name>
+python main.py sweep
 ```
 
 Optional Arguments:
 
 - `<count>` number of runs to be performed on the sweep
+- `<sweep-id>` sweep id
 - sweep config to be defined in `sweep.py`
+
+### Prediction with activation values distribution
+#### Get true value distributions
+
+```bash
+python main.py true-value-distributions <model-identifier>
+```
+
+Optional Arguments:
+
+- `<data_path>` path to the data to be get the true value distributions from, default set to RAF-DB (see `.env`)
+- `<output_path>` path for distributions and plots to be saved, default set to activation_values (see `.env`)
+  
+#### Analyze model performance with kl-divergence
+
+```bash
+kl-analyze <model-identifier>
+```
+
+Optional arguments:
+
+- `<data_path>` path to the data to be get the true value distributions from, default set to validation set (see `.env`)
+- `<output_path>` path for distributions and plots to be saved, default set to activation_values (see `.env`)

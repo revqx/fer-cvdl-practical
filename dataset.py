@@ -1,4 +1,5 @@
 import os
+from functools import lru_cache
 
 import pandas as pd
 import torch
@@ -47,7 +48,7 @@ class AffectNet(Dataset):
         with Image.open(img_path) as img:
             img = transform(img)
 
-        return img, label
+        return img, label, img_path
 
     def __len__(self):
         return len(self.annotations)
@@ -88,23 +89,25 @@ class RafDb(Dataset):
         with Image.open(img_path) as img:
             img = transform(img)
 
-        return img, label
+        return img, label, img_path
 
 
 class DatasetWrapper(Dataset):
-    def __init__(self, images, labels, preprocessing=None, augmentations=[]):
+    def __init__(self, images, labels, img_paths, preprocessing=None, augmentations=[]):
         self.images = images
         self.labels = labels
+        self.img_paths = img_paths # for retrieving the val_set paths
         self.augmentations = augmentations  # This will be a v2.Compose object
         self.preprocessing = preprocessing
-        # A few augmentations not supported by mps yet
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         # Adjusting the length based on the presence or absence of augmentations
         self.augmentation_factor = 1 if augmentations is None else (1 + len(self.augmentations))
+        
 
     def __len__(self):
         return len(self.images) * self.augmentation_factor
 
+    @lru_cache(maxsize=100_000)
     def __getitem__(self, idx):
         original_idx = idx // self.augmentation_factor
 
@@ -112,8 +115,8 @@ class DatasetWrapper(Dataset):
             raise IndexError(f"Index {idx} out of range")
 
         image = self.images[original_idx]
-        image = image.to(self.device)
         label = self.labels[original_idx]
+        img_path = self.img_paths[original_idx]
 
         # Preprocess the image
         if self.preprocessing:
@@ -123,4 +126,6 @@ class DatasetWrapper(Dataset):
         if idx != original_idx and self.augmentations:
             image = self.augmentations[(idx % self.augmentation_factor) - 1](image)
 
-        return image, label
+        image = image.to(self.device)  # please do not move this line infrot of the augmentations
+    
+        return image, label, img_path
