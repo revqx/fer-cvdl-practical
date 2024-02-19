@@ -1,6 +1,6 @@
+import copy
 import os
 from datetime import datetime
-import copy
 
 import numpy as np
 import torch
@@ -30,7 +30,7 @@ def train_model(config: dict):
         config["device"] = "cpu"
         print("CUDA not available. Using CPU instead.")
     device = torch.device(config["device"])
-    
+
     # Preprocessing and augmentations
     preprocessing = select_preprocessing(config["preprocessing"])
     augmentations = select_augmentations(config["augmentations"])
@@ -50,8 +50,10 @@ def train_model(config: dict):
 
     dataset = get_dataset(config["train_data"])
     train_loader, val_loader, val_indices, val_img_paths = train_val_dataloaders(dataset, preprocessing, augmentations,
-                                                     config["validation_split"], config["batch_size"],
-                                                     config["sampler"], config["class_weight_adjustments"])
+                                                                                 config["validation_split"],
+                                                                                 config["batch_size"],
+                                                                                 config["sampler"],
+                                                                                 config["class_weight_adjustments"])
 
     # Define loss function
     criterion = torch.nn.CrossEntropyLoss()
@@ -79,7 +81,7 @@ def train_model(config: dict):
     model_save_path = os.path.join(model_save_path, f"{config['model_name']}-{timestamp}-{wandb_id}.pth")
 
     # Train and evaluate the model
-    model  = training_loop(model, train_loader, val_loader, criterion, optimizer, scheduler, config)
+    model = training_loop(model, train_loader, val_loader, criterion, optimizer, scheduler, config)
 
     # Save val_indices to a file
     np.save('val_indices.npy', val_indices)
@@ -178,7 +180,7 @@ def training_loop(model, train_loader, val_loader, criterion, optimizer, schedul
     model.load_state_dict(best_model_wts)
 
     return model
-        
+
 
 def get_weighted_sampler(labels, class_weight_adjustments=None):
     class_counts = np.bincount(labels)
@@ -215,7 +217,7 @@ def train_val_dataloaders(dataset, preprocessing, augmentations, validation_spli
 
     images = [img for img, _, img_path in dataset]
     labels = [label for _, label, _ in dataset]
-    img_paths = [img_path for _, _, img_path in dataset] #for retrieving 
+    img_paths = [img_path for _, _, img_path in dataset]  # for retrieving
 
     # Stratified train-test split
     indices = np.arange(len(images))

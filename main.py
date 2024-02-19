@@ -1,22 +1,20 @@
-import json
 import os
 from datetime import datetime
-import numpy as np
 
+import numpy as np
 import typer
 import wandb
 from dotenv import load_dotenv
 
 from analyze import accuracies, confusion_matrix, analyze_run_and_upload
 from clip_affect_net import clip_affect_net_faces
+from distribution import get_activation_values, get_kl_results, kl_divergence_accuracies, \
+    get_avg_softmax_activation_values
 from ensemble import ensemble_results, save_confusion_matrix_as_heatmap
 from inference import apply_model
 from sweep import get_sweep_config
 from train import train_model
-from utils import label_from_path
 from video_prediction import make_video_prediction
-from distribution import  get_activation_values, get_kl_results, kl_divergence_accuracies, generate_confusion_matrix, get_avg_softmax_activation_values
-
 
 load_dotenv()
 app = typer.Typer()
@@ -32,7 +30,6 @@ TRAIN_CONFIG = {
     # Options: "HorizontalFlip", "RandomRotation", "RandomCrop", "TrivialAugmentWide", "RandAugment"
     "validation_split": 0.1,
     "learning_rate": 0.0001,
-    "epochs": 10,
     "batch_size": 32,
     "sampler": "uniform",  # Options: uniform
     "scheduler": "StepLR",  # Options: ReduceLROnPlateau, StepLR
@@ -50,8 +47,10 @@ TRAIN_CONFIG = {
 }
 
 # In case you want to create an ensemble model, add the model names/id here
-ENSEMBLE_MODELS = ["8cp5wrtr_1", "zpwmo75q", "zpwmo75q", "npl99ug4", "h1zooiju", "1p4v64b3", "1eq7h5pb"] 
-# Current best ensemble with 82,16 %Top1 ["8cp5wrtr_1", "zpwmo75q", "zpwmo75q", "npl99ug4", "h1zooiju", "1p4v64b3", "1eq7h5pb"]
+# Current best ensemble with 82,16 %Top1
+# ["8cp5wrtr_1", "zpwmo75q", "zpwmo75q", "npl99ug4", "h1zooiju", "1p4v64b3", "1eq7h5pb"]
+ENSEMBLE_MODELS = ["8cp5wrtr_1", "zpwmo75q", "zpwmo75q", "npl99ug4", "h1zooiju", "1p4v64b3", "1eq7h5pb"]
+
 
 @app.command()
 def train(offline: bool = False, sweep: bool = False):
@@ -88,7 +87,7 @@ def inference(model_name: str, data_path: str, output_path: str):
     folder_name = data_path.split("/")[-1]
     output_file_name = f"{folder_name}-{timestamp}-{model_id}.csv"
     print(f"Writing results to {output_file_name}.")
-    results.to_csv(os.path.join(output_path, output_file_name), idx=False)
+    results.to_csv(os.path.join(output_path, output_file_name), index=False)
 
 
 @app.command()
@@ -170,20 +169,19 @@ def true_value_distributions(model_name: str, data_path: str = os.getenv("DATASE
     """Takes the model_name and data_path, loads the activation values and calculates the true value distributions."""
     output_path = os.getenv("ACTIVATION_VALUES_PATH")
     activation_values_dict = get_activation_values(model_name, data_path, output_path)
-    true_value_distributions = get_avg_softmax_activation_values(activation_values_dict, output_path,
-                                                                  constant=20, temperature=0.5, threshold=24)
-
+    get_avg_softmax_activation_values(activation_values_dict, output_path,
+                                      constant=20, temperature=0.5, threshold=24)
 
 @app.command()
 def kl_analyze(model_name: str, data_path: str = os.getenv("DATASET_TEST_PATH")):
     """Takes the model_name and data_path, loads the true value distributions and calculates the kl-divergences.
     Returns the top1 and top3 accuracies and the confusion matrix."""
     output_path = os.getenv("ACTIVATION_VALUES_PATH")
-    above_df, kl_divergence_df, be_labels, ab_labels = get_kl_results(model_name, output_path, data_path, constant = 20,
-                                                                   temperature =0.5, threshold=24)
-    print(len(ab_labels)) # outputs number of samples above threshold
+    above_df, kl_divergence_df, be_labels, ab_labels = get_kl_results(model_name, output_path, data_path, constant=20,
+                                                                      temperature=0.5, threshold=24)
+    print(len(ab_labels))  # outputs number of samples above threshold
     top1, top3, pred_labels, true_labels, _ = kl_divergence_accuracies(kl_divergence_df, above_df, be_labels, ab_labels)
-    conf_matrix = generate_confusion_matrix(true_labels, pred_labels)
+    conf_matrix = confusion_matrix(true_labels, pred_labels)
     print(conf_matrix)
     print("Top 1 accuracy: ", top1, "Top 3 accuracy: ", top3)
 

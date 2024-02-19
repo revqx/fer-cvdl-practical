@@ -5,8 +5,7 @@ import matplotlib.pyplot as plt
 from dotenv import load_dotenv
 import typer
 import pandas as pd
-from sklearn.metrics import confusion_matrix
-import torch 
+import torch
 import torch.nn.functional as F
 
 from inference import apply_model
@@ -269,12 +268,3 @@ def kl_divergence_accuracies(kl_results_df, above_threshold_df, below_threshold_
     top1 /= len(labels)
     top3 /= len(labels)
     return top1, top3, top1_labels, true_labels, debug_dists
-
-
-def generate_confusion_matrix(true_labels, top1_labels):
-    """Takes a list of true labels and a list of predicted labels,
-    calculates the confusion matrix, and returns the results as a numpy array."""
-
-    cm = confusion_matrix(true_labels, top1_labels)
-
-    return cm
