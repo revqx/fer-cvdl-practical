@@ -12,4 +12,7 @@ python-dotenv~=1.0.0
 opencv-python~=4.9.0
 scikit-image~=0.22.0
 dlib~=19.24.2
-onnxruntime~=onnxruntime
+onnxruntime~=1.17
+
+seaborn~=0.13.1
+captum~=0.7.0

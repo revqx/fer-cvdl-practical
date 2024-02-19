@@ -3,6 +3,7 @@ import torch
 import numpy as np
 import dlib
 import onnxruntime as ort
+from onnxruntime.capi.onnxruntime_pybind11_state import NoSuchFile
 
 from gradcam import overlay
 from inference import load_model_and_preprocessing
@@ -14,8 +15,12 @@ COLOR_GREEN = (0, 255, 0)
 COLOR_WHITE = (255, 255, 255)
 INFO_TEXT_SIZE = 0.7
 DEFAULT_FONT = cv2.FONT_HERSHEY_SIMPLEX
-SHAPE_PREDICTOR = dlib.shape_predictor(
-    "models/shape_predictor_68_face_landmarks.dat")
+
+try:
+    SHAPE_PREDICTOR = dlib.shape_predictor(
+        "models/shape_predictor_68_face_landmarks.dat")
+except RuntimeError:
+    SHAPE_PREDICTOR = None
 
 """
 Disclaimer: Parts of the face detection code are based on the following repository:
@@ -27,9 +32,12 @@ The model can be downloaded from:
 https://github.com/Linzaer/Ultra-Light-Fast-Generic-Face-Detector-1MB/blob/master/models/onnx/version-RFB-320.onnx
 """
 ONNX_PATH = "models/version-RFB-320.onnx"
-
-ORT_SESSION = ort.InferenceSession(ONNX_PATH)
-INPUT_NAME = ORT_SESSION.get_inputs()[0].name
+try:
+    ORT_SESSION = ort.InferenceSession(ONNX_PATH)
+    INPUT_NAME = ORT_SESSION.get_inputs()[0].name
+except NoSuchFile:
+    ORT_SESSION = None
+    INPUT_NAME = None
 
 
 def initialize_model(model_name: str):
