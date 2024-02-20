@@ -9,7 +9,7 @@ AVAILABLE_AUGMENTATIONS = {
     "RandomRotation": v2.RandomRotation(degrees=(-10, 10)),
     "RandomCrop": v2.RandomAffine(degrees=0, translate=(0, 0), scale=(1.0, 1.3), shear=0),
     "TrivialAugmentWide": v2.TrivialAugmentWide(),
-    "RandAugment": v2.RandAugment(magnitude=5)
+    "RandAugment": v2.RandAugment(magnitude=4)
 }
 
 
@@ -48,6 +48,6 @@ def augment_images(input_dir, output_dir, augmentations):
 
 
 if __name__ == "__main__":
-    augmentations = select_augmentations("RandAugment")
+    augmentations = select_augmentations("TrivialAugmentWide")
     augment_images("data/augmentations", "data/augmentations", augmentations)
     print("Augmented images saved to augmented_data.")
