@@ -1,6 +1,6 @@
 import copy
-import os
 from datetime import datetime
+import os
 
 import numpy as np
 import torch
@@ -49,9 +49,11 @@ def train_model(config: dict):
     model.to(device)
 
     dataset = get_dataset(config["train_data"])
-    train_loader, val_loader = train_val_dataloaders(dataset, preprocessing, augmentations,
-                                                     config["validation_split"], config["batch_size"],
-                                                     config["sampler"], config["class_weight_adjustments"])
+    train_loader, val_loader, val_indices, val_img_paths = train_val_dataloaders(dataset, preprocessing, augmentations,
+                                                                                 config["validation_split"],
+                                                                                 config["batch_size"],
+                                                                                 config["sampler"],
+                                                                                 config["class_weight_adjustments"])
 
     # Define loss function
     criterion = torch.nn.CrossEntropyLoss()
@@ -80,6 +82,17 @@ def train_model(config: dict):
 
     # Train and evaluate the model
     model = training_loop(model, train_loader, val_loader, criterion, optimizer, scheduler, config)
+
+    # Save val_indices to a file
+    np.save('val_indices.npy', val_indices)
+
+    # Create a new wandb Artifact
+    artifact = wandb.Artifact('val_indices', type='dataset')
+    artifact.add_file('val_indices.npy')
+    wandb.run.log_artifact(artifact)
+
+    # move to cpu before starting next training loop
+    model = model.cpu()
 
     # Save model and transforms
     torch.save({"model": model.state_dict(), "preprocessing": preprocessing}, model_save_path)
@@ -166,7 +179,22 @@ def training_loop(model, train_loader, val_loader, criterion, optimizer, schedul
             break
 
     model.load_state_dict(best_model_wts)
+
     return model
+
+
+def get_weighted_sampler(labels, class_weight_adjustments=None):
+    class_counts = np.bincount(labels)
+    class_weights = 1. / class_counts
+
+    if class_weight_adjustments is not None:
+        if len(class_weight_adjustments) != len(class_weights):
+            raise ValueError(f"Invalid class_weight_adjustments. Expected length: {len(class_weights)}")
+
+        class_weights *= class_weight_adjustments
+
+    weights = class_weights[labels]
+    return WeightedRandomSampler(weights, len(weights))
 
 
 def get_weighted_sampler(labels, class_weight_adjustments=None):
@@ -188,12 +216,14 @@ def train_val_dataloaders(dataset, preprocessing, augmentations, validation_spli
     if validation_split < 0 or validation_split >= 1:
         raise ValueError(f"Invalid validation_split: {validation_split}. It should be in the range [0, 1).")
 
-    images = [img for img, _ in dataset]
-    labels = [label for _, label in dataset]
+    images = [img for img, _, img_path in dataset]
+    labels = [label for _, label, _ in dataset]
+    img_paths = [img_path for _, _, img_path in dataset]  # for retrieving
 
     # Stratified train-test split
-    train_images, val_images, train_labels, val_labels = train_test_split(
-        images, labels, test_size=validation_split, stratify=labels)
+    indices = np.arange(len(images))
+    train_images, val_images, train_labels, val_labels, train_img_paths, val_img_paths, train_indices, val_indices = train_test_split(
+        images, labels, img_paths, indices, test_size=validation_split, stratify=labels)
 
     print(f"Prior train distribution (Σ: {len(train_images)}): {np.bincount(train_labels)}")
     print(f"Prior val distribution (Σ: {len(val_images)}): {np.bincount(val_labels)}")
@@ -201,12 +231,12 @@ def train_val_dataloaders(dataset, preprocessing, augmentations, validation_spli
     print("Applying augmentations to the train set...") if augmentations != [] else None
 
     # Create datasets
-    train_dataset = DatasetWrapper(train_images, train_labels, preprocessing, augmentations)
-    val_dataset = DatasetWrapper(val_images, val_labels, preprocessing)
+    train_dataset = DatasetWrapper(train_images, train_labels, train_img_paths, preprocessing, augmentations)
+    val_dataset = DatasetWrapper(val_images, val_labels, val_img_paths, preprocessing)
 
     train_sampler = val_sampler = None
     if sampler == "uniform":
-        augmented_train_labels = [label for _, label in train_dataset]
+        augmented_train_labels = [label for _, label, _ in train_dataset]
         print("Oversampling train and val datasets to balance class distribution...")
         train_sampler = get_weighted_sampler(augmented_train_labels, class_weight_adjustments)
         val_sampler = get_weighted_sampler(val_labels, class_weight_adjustments)
@@ -223,4 +253,4 @@ def train_val_dataloaders(dataset, preprocessing, augmentations, validation_spli
           f"{np.bincount(np.concatenate([labels.numpy() for _, labels in val_loader]))}") \
         if augmentations != [] or sampler == "uniform" else None
 
-    return train_loader, val_loader
+    return train_loader, val_loader, val_indices, val_img_paths
