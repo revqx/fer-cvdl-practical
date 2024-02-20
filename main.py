@@ -1,21 +1,18 @@
 import os
 from datetime import datetime
-import json
 
 import cv2
-
 import numpy as np
 import typer
 import wandb
 from dotenv import load_dotenv
-
-from explain import pca_graph, explain_with_method, explain_all
 
 from analyze import accuracies, confusion_matrix, analyze_run_and_upload
 from clip_affect_net import clip_affect_net_faces
 from distribution import get_activation_values, get_kl_results, kl_divergence_accuracies, \
     get_avg_softmax_activation_values
 from ensemble import ensemble_results, save_confusion_matrix_as_heatmap
+from explain import pca_graph, explain_with_method, explain_all
 from inference import apply_model, load_model_and_preprocessing
 from sweep import get_sweep_config
 from train import train_model
@@ -140,7 +137,8 @@ def demo(model_name: str, webcam: bool = False, cam_id: int = 0,
 
     timestamp = datetime.now().strftime("%Y%m%dT%H%M%S")
     output_file = os.path.join(output_dir, f"{model_name}-{timestamp}.{output_ext}")
-    make_video_prediction(model_name, webcam, cam_id, input_video, output_file, show_processing, explainability, landmarks, info, codec)
+    make_video_prediction(model_name, webcam, cam_id, input_video, output_file, show_processing, explainability,
+                          landmarks, info, codec)
 
 
 @app.command()
@@ -193,11 +191,12 @@ def sweep(sweep_id: str = "", count: int = 40):
 
 @app.command()
 def true_value_distributions(model_name: str, data_path: str = os.getenv("DATASET_RAF_DB_PATH"),
-                             output_path = os.getenv("ACTIVATION_VALUES_PATH")):
+                             output_path=os.getenv("ACTIVATION_VALUES_PATH")):
     """Takes the model_name and data_path, loads the activation values and calculates the true value distributions."""
     activation_values_dict = get_activation_values(model_name, data_path, output_path)
     get_avg_softmax_activation_values(activation_values_dict, output_path,
                                       constant=20, temperature=0.5, threshold=24)
+
 
 @app.command()
 def kl_analyze(model_name: str, data_path: str = os.getenv("DATASET_TEST_PATH")):
@@ -234,19 +233,23 @@ def retrieve_val(run_dataset_version: str):
 @app.command()
 def explain(model_name: str, method: str = 'gradcam', window: int = 8, data_path: str = os.getenv("DATASET_TEST_PATH"),
             examples: int = 5, random: bool = True, path_contains: str = "", save_path: str = None):
+    """Specify a visual explanation method to explain a model."""
     model_id, model, preprocessing = load_model_and_preprocessing(model_name)
     explain_with_method(model, method, data_path, examples=examples, random=random,
                         path_contains=path_contains, save_path=save_path, window_size=(window, window))
 
 
 @app.command()
-def explain_image(model_name: str, window: int = 8, data_path: str = os.getenv("DATASET_TEST_PATH"), path_contains: str = "", save_path: str = None):
+def explain_image(model_name: str, window: int = 8, data_path: str = os.getenv("DATASET_TEST_PATH"),
+                  path_contains: str = "", save_path: str = None):
+    """Use all methods to explain the model. Displays in matplotlib grid."""
     model_id, model, preprocessing = load_model_and_preprocessing(model_name)
     explain_all(model, data_path, path_contains=path_contains, save_path=save_path, window_size=(window, window))
 
 
 @app.command()
 def pca(model_name: str, data_path: str = os.getenv("DATASET_TEST_PATH"), softmax: bool = False):
+    """Show a 2D PCA graph of the model's predictions."""
     model_id, results = apply_model(model_name, data_path)
     pca_graph(model_id, results, softmax=softmax)
 

@@ -4,20 +4,10 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-from torch import nn
 import torch.nn.functional as F
+from torch import nn
 
 from utils import get_images_and_labels, LABEL_TO_STR
-
-"""
-Good pictures for Model 52q6cmxc:
-    - img 167: fear
-    - img 470: sadness
-    - img 017: mislabeled as sadness, actually surprise (the net has a point there)
-    - img 515: anger
-    - img 397: happiness
-    - img 126: fear (works even though there are hands in the face)
-"""
 
 
 class LeNetGrad(nn.Module):
@@ -93,7 +83,8 @@ class CustomEmotionModel3Grad(nn.Module):
 
 def grad_cam(model: nn.Module, data_path, examples=10, random=True, path_contains=None, save_path=None):
     model_grad = GRAD_MODELS[model.__class__.__name__](model)
-    tensors, labels, filenames = get_images_and_labels(data_path, limit=examples, random=random, path_contains=path_contains)
+    tensors, labels, filenames = get_images_and_labels(data_path, limit=examples, random=random,
+                                                       path_contains=path_contains)
     print(model_grad)
 
     for t, l, p in zip(tensors, labels, filenames):
@@ -142,12 +133,12 @@ def create_heatmap(activations, pooled_gradients, activation_weighted=True):
 
 
 def heatmap_on_img(img, heatmap, alpha=0.4):
-    heatmap = np.uint8(heatmap*255)
+    heatmap = np.uint8(heatmap * 255)
     heatmap = cv2.resize(heatmap, (img.shape[1], img.shape[0]))
     heatmap = cv2.applyColorMap(heatmap, cv2.COLORMAP_VIRIDIS)
     heatmap = cv2.blur(heatmap, (5, 5))
     # superimposed img as imag with transparent overlay of heatmap
-    superimposed_img = cv2.addWeighted(img, alpha, heatmap, 1-alpha, 0)
+    superimposed_img = cv2.addWeighted(img, alpha, heatmap, 1 - alpha, 0)
     return np.uint8(superimposed_img)
 
 

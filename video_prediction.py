@@ -1,8 +1,8 @@
 import cv2
-import torch
-import numpy as np
 import dlib
+import numpy as np
 import onnxruntime as ort
+import torch
 from onnxruntime.capi.onnxruntime_pybind11_state import NoSuchFile
 
 from gradcam import overlay
@@ -114,10 +114,10 @@ def top_prediction_with_label(predictions: torch.Tensor):
 
 
 def predict_expressions(
-    image: np.ndarray,
-    model: torch.nn.Module,
-    preprocessing: torch.nn.Module,
-    device: str,
+        image: np.ndarray,
+        model: torch.nn.Module,
+        preprocessing: torch.nn.Module,
+        device: str,
 ):
     """Predict the expressions of the given image.
 
@@ -150,8 +150,8 @@ def predict_expressions(
 
 
 def draw_landmarks(
-    frame: np.ndarray,
-    box: np.ndarray,
+        frame: np.ndarray,
+        box: np.ndarray,
 ):
     """Draw the landmarks on the frame using dlib.
 
@@ -168,9 +168,9 @@ def draw_landmarks(
 
 
 def draw_explainability_overlay(
-    frame: np.ndarray,
-    id: int,
-    picture_with_overlay: np.ndarray,
+        frame: np.ndarray,
+        id: int,
+        picture_with_overlay: np.ndarray,
 ):
     """Draw the explainability overlay on the frame.
 
@@ -197,9 +197,9 @@ def draw_explainability_overlay(
 
 
 def draw_info_box(
-    frame: np.ndarray,
-    id: int,
-    predictions: torch.Tensor,
+        frame: np.ndarray,
+        id: int,
+        predictions: torch.Tensor,
 ):
     """Draw the info box with the predictions.
 
@@ -221,7 +221,7 @@ def draw_info_box(
     )
 
     for i, (expression, score) in enumerate(
-        zip(LABEL_TO_STR.values(), predictions[0])
+            zip(LABEL_TO_STR.values(), predictions[0])
     ):
         cv2.putText(
             frame,
@@ -373,13 +373,13 @@ def predict_face(width, height, confidences, boxes, prob_threshold, iou_threshol
 
 
 def process_frame(
-    frame: np.ndarray,
-    model: torch.nn.Module,
-    device: str,
-    preprocessing: str,
-    show_explainability: bool,
-    show_landmarks: bool,
-    show_info: bool,
+        frame: np.ndarray,
+        model: torch.nn.Module,
+        device: str,
+        preprocessing: str,
+        show_explainability: bool,
+        show_landmarks: bool,
+        show_info: bool,
 ):
     """Process the frame and return the frame with the predicted expressions, landmarks, and explainability.
 
@@ -471,16 +471,16 @@ def process_frame(
 
 
 def main_loop(
-    cap: cv2.VideoCapture,
-    model: torch.nn.Module,
-    device: str,
-    preprocessing: str,
-    webcam: bool,
-    show_processing: bool,
-    show_explainability: bool,
-    show_landmarks: bool,
-    show_info: bool,
-    out: cv2.VideoWriter,
+        cap: cv2.VideoCapture,
+        model: torch.nn.Module,
+        device: str,
+        preprocessing: str,
+        webcam: bool,
+        show_processing: bool,
+        show_explainability: bool,
+        show_landmarks: bool,
+        show_info: bool,
+        out: cv2.VideoWriter,
 ):
     """Main loop for video prediction.
 
@@ -546,16 +546,16 @@ def main_loop(
 
 
 def make_video_prediction(
-    model_name: str,
-    webcam: bool,
-    cam_id: int,
-    video_input: str,
-    output_file: str,
-    show_processing: bool,
-    show_explainability: bool,
-    show_landmarks: bool,
-    show_info: bool,
-    codec: str,
+        model_name: str,
+        webcam: bool,
+        cam_id: int,
+        video_input: str,
+        output_file: str,
+        show_processing: bool,
+        show_explainability: bool,
+        show_landmarks: bool,
+        show_info: bool,
+        codec: str,
 ):
     """Make video prediction using the model with the given name.
 

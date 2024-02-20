@@ -96,13 +96,12 @@ class DatasetWrapper(Dataset):
     def __init__(self, images, labels, img_paths, preprocessing=None, augmentations=[]):
         self.images = images
         self.labels = labels
-        self.img_paths = img_paths # for retrieving the val_set paths
+        self.img_paths = img_paths  # for retrieving the val_set paths
         self.augmentations = augmentations  # This will be a v2.Compose object
         self.preprocessing = preprocessing
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         # Adjusting the length based on the presence or absence of augmentations
         self.augmentation_factor = 1 if augmentations is None else (1 + len(self.augmentations))
-        
 
     def __len__(self):
         return len(self.images) * self.augmentation_factor
@@ -127,5 +126,5 @@ class DatasetWrapper(Dataset):
             image = self.augmentations[(idx % self.augmentation_factor) - 1](image)
 
         image = image.to(self.device)  # please do not move this line infrot of the augmentations
-    
+
         return image, label, img_path

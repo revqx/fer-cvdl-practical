@@ -252,7 +252,7 @@ class CustomEmotionModel5(nn.Module):
         x = self.fc1(x)
 
         return x
-    
+
 
 class CustomEmotionModel6(nn.Module):
     def __init__(self, num_classes=6, **kwargs):
@@ -299,7 +299,7 @@ class CustomEmotionModel7(nn.Module):
         x = self.fc1(x)
 
         return x
-    
+
 
 class ConvModel1(nn.Module):
     def __init__(self, distribution=False, num_classes=6, **kwargs):
@@ -312,7 +312,7 @@ class ConvModel1(nn.Module):
         self.conv_block3 = _create_conv_block_4(64, 128, pool=False)
 
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.flatten = nn.Flatten() 
+        self.flatten = nn.Flatten()
         self.fc1 = nn.Linear(128, num_classes)
 
     def forward(self, x):
@@ -327,7 +327,6 @@ class ConvModel1(nn.Module):
             return x2
         else:
             return x
-
 
 
 class DynamicModel(nn.Module):

@@ -1,4 +1,5 @@
 import os
+import warnings
 
 import captum
 import cv2
@@ -9,8 +10,6 @@ from sklearn.decomposition import PCA
 from torch import nn
 
 from utils import LABEL_TO_STR, get_images_and_labels
-
-import warnings
 
 
 def pca_graph(model_id, inference_results: pd.DataFrame, softmax=False):
@@ -34,9 +33,6 @@ def pca_graph(model_id, inference_results: pd.DataFrame, softmax=False):
                 true_label.append(emotion)
 
     principal_df['label'] = true_label
-    # print the dataframe
-    print(principal_df.head())
-    # plot the graph
     fig = plt.figure(figsize=(8, 8))
     ax = fig.add_subplot(1, 1, 1)
     ax.grid()
