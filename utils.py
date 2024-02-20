@@ -1,5 +1,6 @@
 import glob
 import os
+import random as rnd
 
 import torch
 import torchvision
@@ -114,7 +115,10 @@ def load_model_and_preprocessing(model_name: str) -> (str, torch.nn.Module, torc
     loaded_model.load_state_dict(loaded_model_dict["model"])
     loaded_preprocessing = loaded_model_dict["preprocessing"]
 
-    print(f"Loaded model from {selected_model_path}")
+    # count number of parameter in flattened loaded_model_dict['model']
+    num_params = sum(p.numel() for p in loaded_model.parameters())
+
+    print(f"Loaded model from {selected_model_path} with {num_params} parameters.")
     return model_id, loaded_model, loaded_preprocessing
 
 
@@ -126,3 +130,21 @@ def get_available_models():
     pattern = os.path.join(path, f"*-*-*.pth")
     model_files = glob.glob(pattern)
     return model_files
+
+
+def get_images_and_labels(path: str, limit=None, random=False, path_contains=None) -> ([torch.Tensor], [int]):
+    """Load all images and labels from the given path.
+       Returns a tuple of lists containing the images and labels."""
+    images = load_images([path])
+    labels = [label_from_path(path) for path, _ in images]
+    paths = [path for path, _ in images]
+    if path_contains:
+        images, labels, paths = zip(*[(i, l, p) for i, l, p in zip(images, labels, paths) if path_contains in p])
+    limit = min(limit, len(images))
+    if limit and random:
+        images, labels, paths = zip(*rnd.sample(list(zip(images, labels, paths)), limit))
+    if limit:
+        images = images[:limit]
+        labels = labels[:limit]
+        paths = paths[:limit]
+    return [tensor for _, tensor in images], labels, paths

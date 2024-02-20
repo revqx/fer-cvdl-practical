@@ -1,12 +1,13 @@
-import numpy as np
 import json
 import os
+
 import matplotlib.pyplot as plt
-from dotenv import load_dotenv
-import typer
+import numpy as np
 import pandas as pd
 import torch
 import torch.nn.functional as F
+import typer
+from dotenv import load_dotenv
 
 from inference import apply_model
 from utils import label_from_path, LABEL_TO_STR
@@ -37,9 +38,9 @@ def get_activation_values(model_name, data_path, output_path):
             activation_values_dict[model_name][label] = []
 
         activation_values_dict[model_name][label].append(values)
-        
+
     safe_file_path(activation_values_dict, output_path, 'activation_values.json')
-    
+
     return activation_values_dict
 
 
@@ -54,7 +55,7 @@ def convert_np_arrays_to_lists(obj):
         return [convert_np_arrays_to_lists(item) for item in obj]
     else:
         return obj
-    
+
 
 def safe_file_path(dict, output_path, file_name='activation_values.json'):
     """Takes a dictionary and an output path as str,
@@ -65,12 +66,12 @@ def safe_file_path(dict, output_path, file_name='activation_values.json'):
         # Values will be saved in a json file (.env file needs to be updated with path to folder)
 
 
-def softmax(x, temperature = 1.0):
+def softmax(x, temperature=1.0):
     """Compute softmax values for each sets of scores in x 
     and tunes the distribution depending on temperature value."""
     # temperature is higher for focus on certain values, lower for more uniform distribution
     x = x.astype(float)  # convert the inner values to floats to avoid numpy error
-    e_x = np.exp(x / temperature - np.max(x))  
+    e_x = np.exp(x / temperature - np.max(x))
     # Subtract max(x) for numerical stability, multiply with temperature for temperature scaling
     return e_x / e_x.sum(axis=0)
 
@@ -91,7 +92,7 @@ def get_avg_softmax_activation_values(activation_values_dict, output_path, tempe
     """Takes a nested dictionary of activation values and an output path as str, 
     applies softmax to each list of activation values, calculates the average activation values by index, 
     and saves the results. Returns only those samples where the highest softmax value is below the given threshold."""
-    
+
     avg_softmax_activation_values_dict = {}
     for model_name, label_dict in activation_values_dict.items():
         avg_softmax_activation_values_dict[model_name] = {}
@@ -107,7 +108,7 @@ def get_avg_softmax_activation_values(activation_values_dict, output_path, tempe
 
             transposed_values = list(map(list, zip(*softmax_values)))
             avg_softmax_activation_values_dict[model_name][label] = [np.mean(val) for val in transposed_values]
-    
+
     safe_file_path(avg_softmax_activation_values_dict, output_path, 'avg_softmax_activation_values.json')
     plot_distributions(avg_softmax_activation_values_dict, output_path)
 
@@ -162,7 +163,7 @@ def load_json(output_path, file=''):
     """Loads a json file and returns the data."""
     if file == '':
         raise ValueError('No file specified.')
-    
+
     with open(os.path.join(output_path, file), 'r') as f:
         data = json.load(f)
     return data
@@ -181,26 +182,28 @@ def kl_divergence_pytorch(inf_distribution, true_distributions):
             true_distribution = torch.tensor(true_distribution).view(1, -1)
 
             if inf_distribution.shape != true_distribution.shape:
-                print(f"Skipping label {label} in model {model_name} because inf_distribution and true_distribution have different sizes.")
+                print(
+                    f"Skipping label {label} in model {model_name} because inf_distribution and true_distribution have different sizes.")
                 continue
 
             kl_divergence = F.kl_div(inf_distribution, true_distribution, reduction='batchmean')
-            
-            kl_divergences[label] = kl_divergence.item()  
+
+            kl_divergences[label] = kl_divergence.item()
 
     return kl_divergences
 
 
-def get_kl_results(model_name, output_path, data_path: str = os.getenv('DATASET_TEST_PATH'), 
-                            dist_path: str = os.getenv('ACTIVATION_VALUES_PATH'),
-                            temperature=1.0, constant=0.0, threshold=None):
+def get_kl_results(model_name, output_path, data_path: str = os.getenv('DATASET_TEST_PATH'),
+                   dist_path: str = os.getenv('ACTIVATION_VALUES_PATH'),
+                   temperature=1.0, constant=0.0, threshold=None):
     """Takes a model name, a data path, and a distribution path,
     calculates the KL divergence between the inference distributions and the true distributions,
     and returns the results as a dataframe."""
-    
+
     true_distributions = load_json(dist_path, 'avg_softmax_activation_values.json')
     above_threshold, below_threshold = get_inf_distributions(model_name, data_path, output_path,
-                                                                temperature=temperature, constant=constant, threshold=threshold)
+                                                             temperature=temperature, constant=constant,
+                                                             threshold=threshold)
 
     kl_results = []
     below_threshold_labels = []
@@ -245,7 +248,7 @@ def kl_divergence_accuracies(kl_results_df, above_threshold_df, below_threshold_
 
         if true_label == pred_labels[0]:
             top1 += 1
-        if true_label in pred_labels[:3]:  
+        if true_label in pred_labels[:3]:
             top3 += 1
 
     for i, row in above_threshold_df.iterrows():
@@ -262,7 +265,7 @@ def kl_divergence_accuracies(kl_results_df, above_threshold_df, below_threshold_
 
         if true_label == pred_labels[0]:
             top1 += 1
-        if true_label in pred_labels[:3]: 
+        if true_label in pred_labels[:3]:
             top3 += 1
 
     top1 /= len(labels)

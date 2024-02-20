@@ -1,6 +1,7 @@
 import os
 from datetime import datetime
 
+import cv2
 import numpy as np
 import typer
 import wandb
@@ -11,7 +12,8 @@ from clip_affect_net import clip_affect_net_faces
 from distribution import get_activation_values, get_kl_results, kl_divergence_accuracies, \
     get_avg_softmax_activation_values
 from ensemble import ensemble_results, save_confusion_matrix_as_heatmap
-from inference import apply_model
+from explain import pca_graph, explain_with_method, explain_all
+from inference import apply_model, load_model_and_preprocessing
 from sweep import get_sweep_config
 from train import train_model
 from video_prediction import make_video_prediction
@@ -102,18 +104,41 @@ def analyze(model_name: str, data_path: str = os.getenv("DATASET_TEST_PATH")):
 
 
 @app.command()
-def demo(model_name: str, record: bool = False, webcam: bool = False, input_file: str = "",
-         show_processing: bool = True):
-    if not webcam and not input_file:
-        raise typer.BadParameter("Please specify a video input when not using the camera.")
+def demo(model_name: str, webcam: bool = False, cam_id: int = 0,
+         input_video: str = "",
+         show_processing: bool = True, explainability: bool = False,
+         landmarks: bool = False, info: bool = True, codec: str = "XVID",
+         output_ext: str = "avi"):
+    if not webcam and input_video.strip() == "":
+        raise typer.BadParameter("Please specify an input video when not using the camera.")
+
+    if webcam:
+        cap = cv2.VideoCapture(cam_id)
+        is_valid = cap.isOpened()
+        cap.release()
+        if not is_valid:
+            raise typer.BadParameter("Please specify a valid camera id")
+
+    if not os.path.exists("models/version-RFB-320.onnx"):
+        raise FileNotFoundError("version-RFB-320.onnx not found. "
+                                "Please download the file from "
+                                "https://github.com/Linzaer/Ultra-Light-Fast-Generic-Face-Detector-1MB/blob/master/models/onnx/version-RFB-320.onnx "
+                                "and put it to the /models directory.")
+
+    if landmarks and not os.path.exists("models/shape_predictor_68_face_landmarks.dat"):
+        raise FileNotFoundError("shape_predictor_68_face_landmarks.dat not found. "
+                                "Please download the file from "
+                                "http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2 "
+                                "and extract it to the /models directory.")
 
     output_dir = os.getenv("VIDEO_OUTPUT_PATH")
-    if not os.path.exists(output_dir) and record:
+    if not os.path.exists(output_dir) and not webcam:
         os.makedirs(output_dir, exist_ok=True)
 
     timestamp = datetime.now().strftime("%Y%m%dT%H%M%S")
-    output_file = os.path.join(output_dir, f"{model_name}-{timestamp}.avi")
-    make_video_prediction(model_name, record, webcam, input_file, output_file, show_processing)
+    output_file = os.path.join(output_dir, f"{model_name}-{timestamp}.{output_ext}")
+    make_video_prediction(model_name, webcam, cam_id, input_video, output_file, show_processing, explainability,
+                          landmarks, info, codec)
 
 
 @app.command()
@@ -165,12 +190,13 @@ def sweep(sweep_id: str = "", count: int = 40):
 
 
 @app.command()
-def true_value_distributions(model_name: str, data_path: str = os.getenv("DATASET_RAF_DB_PATH")):
+def true_value_distributions(model_name: str, data_path: str = os.getenv("DATASET_RAF_DB_PATH"),
+                             output_path=os.getenv("ACTIVATION_VALUES_PATH")):
     """Takes the model_name and data_path, loads the activation values and calculates the true value distributions."""
-    output_path = os.getenv("ACTIVATION_VALUES_PATH")
     activation_values_dict = get_activation_values(model_name, data_path, output_path)
     get_avg_softmax_activation_values(activation_values_dict, output_path,
                                       constant=20, temperature=0.5, threshold=24)
+
 
 @app.command()
 def kl_analyze(model_name: str, data_path: str = os.getenv("DATASET_TEST_PATH")):
@@ -202,6 +228,30 @@ def retrieve_val(run_dataset_version: str):
     print(val_indices[0])
 
     return val_indices
+
+
+@app.command()
+def explain(model_name: str, method: str = 'gradcam', window: int = 8, data_path: str = os.getenv("DATASET_TEST_PATH"),
+            examples: int = 5, random: bool = True, path_contains: str = "", save_path: str = None):
+    """Specify a visual explanation method to explain a model."""
+    model_id, model, preprocessing = load_model_and_preprocessing(model_name)
+    explain_with_method(model, method, data_path, examples=examples, random=random,
+                        path_contains=path_contains, save_path=save_path, window_size=(window, window))
+
+
+@app.command()
+def explain_image(model_name: str, window: int = 8, data_path: str = os.getenv("DATASET_TEST_PATH"),
+                  path_contains: str = "", save_path: str = None):
+    """Use all methods to explain the model. Displays in matplotlib grid."""
+    model_id, model, preprocessing = load_model_and_preprocessing(model_name)
+    explain_all(model, data_path, path_contains=path_contains, save_path=save_path, window_size=(window, window))
+
+
+@app.command()
+def pca(model_name: str, data_path: str = os.getenv("DATASET_TEST_PATH"), softmax: bool = False):
+    """Show a 2D PCA graph of the model's predictions."""
+    model_id, results = apply_model(model_name, data_path)
+    pca_graph(model_id, results, softmax=softmax)
 
 
 if __name__ == "__main__":
