@@ -99,6 +99,7 @@ Optional Arguments:
 - sweep config to be defined in `sweep.py`
 
 ### Prediction with activation values distribution
+
 #### Get true value distributions
 
 ```bash
@@ -109,7 +110,7 @@ Optional Arguments:
 
 - `<data_path>` path to the data to be get the true value distributions from, default set to RAF-DB (see `.env`)
 - `<output_path>` path for distributions and plots to be saved, default set to activation_values (see `.env`)
-  
+
 #### Analyze model performance with kl-divergence
 
 ```bash

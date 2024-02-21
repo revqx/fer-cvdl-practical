@@ -134,7 +134,7 @@ def training_loop(model, train_loader, val_loader, criterion, optimizer, schedul
 
             progress_bar = tqdm(data_loader, desc=f"Epoch {epoch + 1}/{config['max_epochs']} {phase}")
 
-            for inputs, labels in progress_bar:
+            for inputs, labels, _ in progress_bar:
                 inputs = inputs.to(config["device"])
                 labels = labels.to(config["device"])
 
@@ -247,10 +247,10 @@ def train_val_dataloaders(dataset, preprocessing, augmentations, validation_spli
     val_loader = DataLoader(val_dataset, batch_size=batch_size, sampler=val_sampler, shuffle=val_sampler is None)
 
     print(f"Sample of updated train distribution (Σ: {len(train_sampler)}): "
-          f"{np.bincount(np.concatenate([labels.numpy() for _, labels in train_loader]))}") \
+          f"{np.bincount(np.concatenate([labels.numpy() for _, labels, _ in train_loader]))}") \
         if augmentations != [] or sampler == "uniform" else None
     print(f"Sample of updated val distribution (Σ: {len(val_sampler)}): "
-          f"{np.bincount(np.concatenate([labels.numpy() for _, labels in val_loader]))}") \
+          f"{np.bincount(np.concatenate([labels.numpy() for _, labels, _ in val_loader]))}") \
         if augmentations != [] or sampler == "uniform" else None
 
     return train_loader, val_loader, val_indices, val_img_paths

@@ -25,13 +25,15 @@ TRAIN_CONFIG = {
     "model_name": "CustomEmotionModel3",
     # Options: LeNet, ResNet{18, 50}, EmotionModel2, CustomEmotionModel{3, 4, 5}, MobileNetV2
     "model_description": "",
-    "pretrained_model": "95f8nhu7",  # Options: model_id, model_name (for better wandb logging, use the model id)
+    "pretrained_model": "",  # Options: model_id, model_name (for better wandb logging, use the model id)
     "train_data": "RAF-DB",  # Options: RAF-DB, AffectNet
     "preprocessing": "ImageNetNormalization",  # Options: ImageNetNormalization, Grayscale
     "augmentations": "HorizontalFlip, RandomRotation, RandomCrop",
     # Options: "HorizontalFlip", "RandomRotation", "RandomCrop", "TrivialAugmentWide", "RandAugment"
     "validation_split": 0.1,
     "learning_rate": 0.001,
+    "max_epochs": 20,
+    "early_stopping_patience": 5,
     "batch_size": 32,
     "sampler": "uniform",  # Options: uniform
     "scheduler": "StepLR",  # Options: ReduceLROnPlateau, StepLR
@@ -72,7 +74,6 @@ def train(offline: bool = False, sweep: bool = False):
         model = train_model(config)
         print(f"Number of parameters: {sum(p.numel() for p in model.parameters())}"
               f" (Trainable: {sum(p.numel() for p in model.parameters() if p.requires_grad)})")
-        # print(model.summary())
 
         # test model and upload results to wandb if not a sweep run
         if not sweep:
