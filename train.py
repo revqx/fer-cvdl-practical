@@ -1,6 +1,6 @@
 import copy
-import os
 from datetime import datetime
+import os
 
 import numpy as np
 import torch
@@ -109,9 +109,9 @@ def training_loop(model, train_loader, val_loader, criterion, optimizer, schedul
     best_model_wts = copy.deepcopy(model.state_dict())
     best_acc = 0.0
     epochs_no_improve = 0
-    patience = int(config["early_stopping_patience"])
+    patience = config["early_stopping_patience"]
 
-    for epoch in range(int(config["max_epochs"])):
+    for epoch in range(config["max_epochs"]):
         wandb.log({"scheduler": [group['lr'] for group in optimizer.param_groups][0]}, step=epoch + 1)
 
         metrics = {
@@ -148,6 +148,7 @@ def training_loop(model, train_loader, val_loader, criterion, optimizer, schedul
                     if phase == "train":
                         loss.backward()
                         optimizer.step()
+
                 torch.cuda.empty_cache()
 
                 running_loss += loss.item() * inputs.size(0)
@@ -245,10 +246,10 @@ def train_val_dataloaders(dataset, preprocessing, augmentations, validation_spli
                               shuffle=train_sampler is None)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, sampler=val_sampler, shuffle=val_sampler is None)
 
-    print(f"Updated train distribution (Σ: {len(train_sampler)}): "
+    print(f"Sample of updated train distribution (Σ: {len(train_sampler)}): "
           f"{np.bincount(np.concatenate([labels.numpy() for _, labels, _ in train_loader]))}") \
         if augmentations != [] or sampler == "uniform" else None
-    print(f"Updated val distribution (Σ: {len(val_sampler)}): "
+    print(f"Sample of updated val distribution (Σ: {len(val_sampler)}): "
           f"{np.bincount(np.concatenate([labels.numpy() for _, labels, _ in val_loader]))}") \
         if augmentations != [] or sampler == "uniform" else None
 

@@ -415,7 +415,7 @@ def process_frame(
         squared_box = [int(center[0] - size), int(center[1] - size),
                        int(center[0] + size), int(center[1] + size)]
         roi = frame[squared_box[1]: squared_box[3],
-                    squared_box[0]: squared_box[2]]
+              squared_box[0]: squared_box[2]]
         if roi.size == 0:
             continue
 
@@ -532,11 +532,11 @@ def main_loop(
 
         q_pressed = cv2.waitKey(1) == ord("q")
         window_closed = (
-            show_processing
-            and cv2.getWindowProperty(
-                "Facial Expression Recognition", cv2.WND_PROP_VISIBLE
-            )
-            < 1
+                show_processing
+                and cv2.getWindowProperty(
+            "Facial Expression Recognition", cv2.WND_PROP_VISIBLE
+        )
+                < 1
         )
         if q_pressed or window_closed:
             print("Video prediction interrupted.")

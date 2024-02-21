@@ -9,7 +9,7 @@ AVAILABLE_AUGMENTATIONS = {
     "RandomRotation": v2.RandomRotation(degrees=(-10, 10)),
     "RandomCrop": v2.RandomAffine(degrees=0, translate=(0, 0), scale=(1.0, 1.3), shear=0),
     "TrivialAugmentWide": v2.TrivialAugmentWide(),
-    "RandAugment": v2.RandAugment()
+    "RandAugment": v2.RandAugment(magnitude=4)
 }
 
 
@@ -34,6 +34,7 @@ def tensor_to_image(tensor):
 
 
 def augment_images(input_dir, output_dir, augmentations):
+    input_dir = os.path.join(os.getcwd(), input_dir)
     images = load_images([input_dir])
 
     for img_path, tensor in images:
@@ -44,3 +45,9 @@ def augment_images(input_dir, output_dir, augmentations):
             augmented_tensor = augmentation(tensor)
             augmented_image = tensor_to_image(augmented_tensor)
             augmented_image.save(os.path.join(output_dir, f"{filename_without_extension}_aug{i}.jpg"))
+
+
+if __name__ == "__main__":
+    augmentations = select_augmentations("TrivialAugmentWide")
+    augment_images("data/augmentations", "data/augmentations", augmentations)
+    print("Augmented images saved to augmented_data.")

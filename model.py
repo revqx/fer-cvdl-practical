@@ -386,9 +386,8 @@ MODELS = {
     "CustomEmotionModel3": CustomEmotionModel3,
     "CustomEmotionModel4": CustomEmotionModel4,
     "CustomEmotionModel5": CustomEmotionModel5,
-    "CustomEmotionModel6": CustomEmotionModel7,
-    "CustomEmotionModel7": CustomEmotionModel6,
+    "CustomEmotionModel6": CustomEmotionModel6,
+    "CustomEmotionModel7": CustomEmotionModel7,
     "MobileNetV2": MobileNetV2,
-    "CustomEmotionModel_3": CustomEmotionModel3,
     "ConvModel1": ConvModel1
 }

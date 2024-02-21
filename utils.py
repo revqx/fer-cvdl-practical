@@ -37,7 +37,6 @@ transform = v2.Compose([
 ])
 
 
-# load images from list of paths
 def load_images(paths: list[str]) -> list[tuple[str, torch.Tensor]]:
     """
     Load all images from the given paths.
