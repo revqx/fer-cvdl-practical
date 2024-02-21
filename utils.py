@@ -147,3 +147,11 @@ def get_images_and_labels(path: str, limit=None, random=False, path_contains=Non
         labels = labels[:limit]
         paths = paths[:limit]
     return [tensor for _, tensor in images], labels, paths
+
+
+def get_available_models_by_type():
+    model_files = get_available_models()
+    models = {name: [
+        os.path.basename(file).split("-")[-1][:-4] for file in model_files if name in os.path.basename(file)
+    ] for name in set([os.path.basename(file).split("-")[0] for file in model_files])}
+    return models

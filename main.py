@@ -16,6 +16,7 @@ from explain import pca_graph, explain_with_method, explain_all
 from inference import apply_model, load_model_and_preprocessing
 from sweep import get_sweep_config
 from train import train_model
+from utils import get_available_models_by_type
 from video_prediction import make_video_prediction
 
 load_dotenv()
@@ -82,6 +83,11 @@ def train(offline: bool = False, sweep: bool = False):
 
 @app.command()
 def inference(model_name: str, data_path: str, output_path: str):
+    """Does inference on the images from given data_path and writes the results to the output_path.
+    The `model_name is matched against the most recent model of that type or all WandB ids."""
+    available_models = get_available_models_by_type()
+    if model_name not in available_models and model_name not in sum(available_models.values(), []):
+        raise ValueError(f"Model name {model_name} not found in available models. Available models: {available_models}")
     model_id, results = apply_model(model_name, data_path)
     # create name from model_name and timestamp and input files
     timestamp = datetime.now().strftime("%Y%m%dT%H%M%S")
@@ -93,6 +99,7 @@ def inference(model_name: str, data_path: str, output_path: str):
 
 @app.command()
 def analyze(model_name: str, data_path: str = os.getenv("DATASET_TEST_PATH")):
+    """Takes the model_name and data_path and applies the model to it."""
     model_id, results = apply_model(model_name, data_path)
     top_n = accuracies(results)
     conf_matrix = confusion_matrix(results)

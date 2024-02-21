@@ -13,7 +13,13 @@ from utils import LABEL_TO_STR, get_images_and_labels
 
 
 def pca_graph(model_id, inference_results: pd.DataFrame, softmax=False):
-    """Create pca graph of model output."""
+    """Create pca graph of model output.
+
+    Args:
+        model_id: The id of the model.
+        inference_results: A dataframe containing the results.
+        softmax: Apply softmax to the results.
+    """
     # apply softmax on rows without the file name
     if softmax:
         inference_results.iloc[:, 1:] = inference_results.iloc[:, 1:].apply(lambda x: np.exp(x) / np.sum(np.exp(x)),
@@ -52,7 +58,15 @@ def pca_graph(model_id, inference_results: pd.DataFrame, softmax=False):
 
 
 def explain_all(model: nn.Module, data_path, path_contains=None, save_path=None, window_size=(8, 8)):
-    """Use all methods to explain the model. Display in matplotlib grid."""
+    """Use all methods to explain the model. Display in matplotlib grid.
+
+    Args:
+        model: The model to explain.
+        data_path: The path to the data.
+        path_contains: Only use images containing this string in the path.
+        save_path: Save the results to the given path.
+        window_size: The size of the occlusion window.
+    """
     warnings.filterwarnings("ignore")
     tensors, labels, paths = get_images_and_labels(data_path, limit=1, path_contains=path_contains)
     fig, ax = plt.subplots(3, 3, figsize=(8, 8))
@@ -83,7 +97,19 @@ def explain_all(model: nn.Module, data_path, path_contains=None, save_path=None,
 
 def explain_with_method(model: nn.Module, method, data_path, examples=10, random=True,
                         path_contains=None, save_path=None, only_return_first=False, window_size=(8, 8)):
-    """Generates visual explanation of the chosen model with the chosen method."""
+    """Generates visual explanation of the chosen model with the chosen method.
+
+    Args:
+        model: The model to explain.
+        method: The method to use.
+        data_path: The path to the data.
+        examples: The number of examples to explain.
+        random: If True, the examples are chosen randomly.
+        path_contains: Only use images containing this string in the path.
+        save_path: Save the results to the given path.
+        only_return_first: If True, directly return the first result.
+        window_size: The size of the occlusion window.
+    """
     warnings.filterwarnings("ignore")
     if method not in METHODS:
         raise ValueError(f"Method not supported: {method}, supported methods: {list(METHODS.keys())}")
