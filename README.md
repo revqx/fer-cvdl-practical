@@ -12,15 +12,7 @@ pip install -r requirements.txt
    into `./data/raf_db`. The given validation set should be put into `./data/test`. You can also change the paths
    in `.env` to your liking.
 
-## Train
-
-```bash
-python main.py train
-```
-
-Optional Arguments:
-
-- `<offline>` if you want to train offline (e.g. without W&B), default is `False`
+Fully trained models can be downloaded from [here](https://nc.lessmann.dev/s/cLZnaz2wj2XwzPi).
 
 ## Inference
 
@@ -34,6 +26,16 @@ Arguments:
 - `<input-path>` root for all pictures to be tested
 - `<output-path>` destination for `.csv` with results
 
+## Train
+
+```bash
+python main.py train
+```
+
+Optional Arguments:
+
+- `<offline>` if you want to train offline (e.g. without W&B), default is `False`
+
 ## Analysis
 
 ```bash
@@ -42,7 +44,7 @@ python main.py analyze <model-identifier>
 
 Optional Arguments:
 
-- `<data_path>` path to the data to be analyzed, default is the validation set (see `.env`)
+- `<data-path>` path to the data to be analyzed, default is the validation set (see `.env`)
 
 ## Demo
 
@@ -74,33 +76,33 @@ Arguments:
 Optional Arguments:
 - `<method>` Specify the visual explanation method (default: 'gradcam').
 - `<window>` The size of the window for the explanation (default: 8).
-- `<data_path>` The path to the dataset for testing (default: value from environment variable DATASET_TEST_PATH).
+- `<data-path>` The path to the dataset for testing (default: value from environment variable DATASET_TEST_PATH).
 - `<examples>` The number of examples to explain (default: 5).
 - `<random>` Whether to choose examples randomly (default: True).
-- `<path_contains>` Specify a string that the example paths must contain (default: "").
-- `<save_path>` The path to save the explanation results (default: None).
+- `<path-contains>` Specify a string that the example paths must contain (default: "").
+- `<save-path>` The path to save the explanation results (default: None).
 
 
 ```bash
 python main.py explain_image <model_name> --window <window> --data_path <data_path> --path_contains <path_contains> --save_path <save_path>
 ```
 Arguments:
-- `<model_name>` The identifier of the model to explain.
+- `<model-name>` The identifier of the model to explain.
 
 Optional Arguments
 - `<window>` The size of the window for the explanation (default: 8).
-- `<data_path>`: The path to the dataset for testing (default: value from environment variable DATASET_TEST_PATH).
-- `<path_contains>` Specify a string that the example paths must contain (default: "").
-- `<save_path>` The path to save the explanation results (default: None).
+- `<data-path>`: The path to the dataset for testing (default: value from environment variable DATASET_TEST_PATH).
+- `<path-contains>` Specify a string that the example paths must contain (default: "").
+- `<save-path>` The path to save the explanation results (default: None).
 
 ```bash
 python main.py pca <model_name> --data_path <data_path> --softmax <softmax>
 ```
 Arguments:
-- `<model_name>` The identifier of the model to visualize PCA.
+- `<model-name>` The identifier of the model to visualize PCA.
 
 Optional Arguments:
-- `<data_path>` The path to the dataset for testing (default: value from environment variable DATASET_TEST_PATH).
+- `<data-path>` The path to the dataset for testing (default: value from environment variable DATASET_TEST_PATH).
 -  `<softmax>` Whether to apply softmax activation before plotting (default: False).
 
 

@@ -15,3 +15,7 @@ analyze_results_7/*
 
 # keep README files in /data
 !data/**/README.md
+
+# keep model readme and chosen model
+!models/README.md
+!models/CustomEmotionModel3-20240207T033715-fu11xllu.pth
