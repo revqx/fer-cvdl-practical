@@ -163,6 +163,12 @@ def clip(output_dir: str = "data/clipped_affect_net", use_rafdb_format: bool = F
     if not os.path.exists(output_dir):
         os.makedirs(output_dir, exist_ok=True)
 
+    if not os.path.exists("models/haarcascade_frontalface_default.xml"):
+        raise FileNotFoundError("haarcascade_frontalface_default.xml not found. "
+                                "Please download the file from "
+                                "https://github.com/opencv/opencv/blob/master/data/haarcascades/haarcascade_frontalface_default.xml "
+                                "and put it to the /models directory.")
+
     if not use_rafdb_format:
         labels_path = os.path.join(input_path, "labels.csv")
         labels_output_path = os.path.join(output_dir, "labels.csv")
@@ -209,7 +215,7 @@ def true_value_distributions(model_name: str, data_path: str = os.getenv("DATASE
     """Takes the model_name and data_path, loads the activation values and calculates the true value distributions."""
     output_path = os.getenv("ACTIVATION_VALUES_PATH")
     activation_values_dict = get_activation_values(model_name, data_path, output_path)
-    
+
     # Use hyperparameters from config if provided, otherwise use default values
     constant = config["constant"] if config else 20
     temperature = config["temperature"] if config else 1.3
@@ -224,20 +230,20 @@ def kl_analyze(model_name: str, data_path: str = os.getenv("DATASET_TEST_PATH"),
     """Takes the model_name and data_path, loads the true value distributions and calculates the kl-divergences.
     Returns the top1 and top3 accuracies and the confusion matrix."""
     output_path = os.getenv("ACTIVATION_VALUES_PATH")
-    
-    # Use hyperparameters from config if provided, otherwise use default values 
+
+    # Use hyperparameters from config if provided, otherwise use default values
     constant = config["constant"] if config else 20
     temperature = 1 if config else 1.3  # Option for sweep should be: config["temperature"], but put to 1 for experiment
     threshold = config["threshold"] if config else 19.5
 
-    above_df, kl_divergence_df, be_labels, ab_labels = get_kl_results(model_name, output_path, data_path, 
+    above_df, kl_divergence_df, be_labels, ab_labels = get_kl_results(model_name, output_path, data_path,
                                                                       constant=constant, temperature=temperature, threshold=threshold)
     print(len(ab_labels))  # Outputs number of samples above threshold
     top1, top3, pred_labels, true_labels, _ = kl_divergence_accuracies(kl_divergence_df, above_df, be_labels, ab_labels)
     conf_matrix = confusion_matrix(true_labels, pred_labels)
     print(conf_matrix)
-    print("Top 1 accuracy: ", top1, "Top 3 accuracy: ", top3)  
-    
+    print("Top 1 accuracy: ", top1, "Top 3 accuracy: ", top3)
+
     return top1, top3
 
 
