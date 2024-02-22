@@ -88,7 +88,7 @@ def plot_distributions(prob_distributions_dict, output_path):
             plt.close()
 
 
-def get_avg_softmax_activation_values(activation_values_dict, output_path, temperature=1.0, constant=0, threshold=None):
+def get_avg_softmax_activation_values(activation_values_dict, output_path, temperature=1.0, constant=0, threshold=None, plot=True):
     """Takes a nested dictionary of activation values and an output path as str, 
     applies softmax to each list of activation values, calculates the average activation values by index, 
     and saves the results. Returns only those samples where the highest softmax value is below the given threshold."""
@@ -110,7 +110,9 @@ def get_avg_softmax_activation_values(activation_values_dict, output_path, tempe
             avg_softmax_activation_values_dict[model_name][label] = [np.mean(val) for val in transposed_values]
 
     safe_file_path(avg_softmax_activation_values_dict, output_path, 'avg_softmax_activation_values.json')
-    plot_distributions(avg_softmax_activation_values_dict, output_path)
+
+    if plot:
+        plot_distributions(avg_softmax_activation_values_dict, output_path)
 
     return avg_softmax_activation_values_dict
 

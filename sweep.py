@@ -1,4 +1,4 @@
-def get_sweep_config(metric="val_loss", goal="minimize", method="bayes",
+def get_sweep_config(metric="val_loss", goal="minimize", method="random",
                      custom_model=False, early_terminate=False):
     sweep_config = {
         "method": method
@@ -10,19 +10,19 @@ def get_sweep_config(metric="val_loss", goal="minimize", method="bayes",
     }
     sweep_config["metric"] = metric
 
-    # parameters to sweep over (dropout not possible atm because models need custom input for dropout)
+    # Parameters to sweep over (dropout not possible atm because models need custom input for dropout)
     parameters_dict = {
         "optimizer": {
-            "values": ["Adam"]  # options: Adam, SGD
+            "values": ["Adam"]  # Options: Adam, SGD
         },
-        "dataset": {
-            "values": ["RAF-DB"]  # options: AffectNet, RAF-DB
+        "train_data": {
+            "values": ["RAF-DB"]  # Options: AffectNet, RAF-DB
         },
         "batch_size": {
             "values": [32]  # defined here since log distribution causes bad comparability
         },
         "validation_split": {
-            "values": [0.2]  # once sweeped to be set as constant
+            "values": [0.2]  # Once sweeped to be set as constant
         },
         "scheduler": {
             "values": ["ReduceLROnPlateau", "StepLR"]
@@ -81,9 +81,10 @@ def get_sweep_config(metric="val_loss", goal="minimize", method="bayes",
         parameters_dict.update({
             "learning_rate": {
                 # a flat distribution between 0 and 0.1
-                "distribution": "uniform",
-                "min": 0.0001,
-                "max": 0.001
+                #"distribution": "uniform",
+                #"min": 0.00001,
+                #"max": 0.001
+                "values": [0.0001, 0.00001]
             },
             "max_epochs": {
                 "values": [5]  # adjust to your liking (3 gives more accurate results than 1)
@@ -93,5 +94,33 @@ def get_sweep_config(metric="val_loss", goal="minimize", method="bayes",
 
     if early_terminate:
         sweep_config["early_terminate"] = {"type": "hyperband", "min_iter": 5, "eta": 3}
+
+    return sweep_config
+
+
+def get_tune_config():
+    sweep_config = {
+        'method': 'grid',  # Can be 'grid', 'random', or 'bayes'
+        'metric': {
+            'name': 'Top 1 accuracy',
+            'goal': 'maximize'
+        },
+        'parameters': {  # To be defined differently for grid 
+            'temperature': {
+                #'distribution': 'q_uniform',
+                #'min': 0.5,
+                #'max': 8,
+                #'q': 0.5 
+                'values': [0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0, 7.0, 8.0]
+            },
+            'threshold': {
+                'values': [19.5, 20.0, 20.5, 21.0, 21.5, 22.0, 22.5, 23.0, 23.5, 24.0, 24.5, 25.0, 25.5, 26.0, 26.5, 27.0, 27.5]
+                #'values': [20.2, 20.5, 20.8, 21.1, 21.4, 21.7, 22.0, 22.3, 22.6, 22.9, 23.2, 23.5]
+            },
+            'constant': {
+                'value': 20
+            }
+        }
+    }
 
     return sweep_config
