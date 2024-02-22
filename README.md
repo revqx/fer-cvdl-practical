@@ -8,7 +8,7 @@
 pip install -r requirements.txt
 ```
 
-2. Put the affectnet dataset into `./data/affectnet`, the fer2013 dataset into `./data/fer2013`, and the rafdb dataset
+2. Put the affectnet dataset into `./data/affectnet` and the rafdb dataset
    into `./data/raf_db`. The given validation set should be put into `./data/test`. You can also change the paths
    in `.env` to your liking.
 

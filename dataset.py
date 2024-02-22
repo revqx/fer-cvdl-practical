@@ -13,7 +13,6 @@ def get_dataset(name: str):
     """Return the dataset object given the name."""
     datasets = {
         "AffectNet": AffectNet,
-        "FER2013": Fer2013,
         "RAF-DB": RafDb
     }
     if name in datasets:
@@ -52,17 +51,6 @@ class AffectNet(Dataset):
 
     def __len__(self):
         return len(self.annotations)
-
-
-class Fer2013(Dataset):
-    def __init__(self):
-        raise NotImplemented()
-
-    def __getitem__(self, item):
-        raise NotImplemented()
-
-    def __len__(self):
-        raise NotImplemented()
 
 
 class RafDb(Dataset):
