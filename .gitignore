@@ -21,4 +21,4 @@ analyze_results_7/*
 !models/CustomEmotionModel3-20240207T033715-fu11xllu.pth
 
 # keep face detection model
-!models/version-RFB-320
+!models/version-RFB-320.onnx
