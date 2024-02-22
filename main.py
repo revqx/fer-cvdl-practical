@@ -14,7 +14,7 @@ from distribution import get_activation_values, get_kl_results, kl_divergence_ac
 from ensemble import ensemble_results, save_confusion_matrix_as_heatmap
 from explain import pca_graph, explain_with_method, explain_all
 from inference import apply_model, load_model_and_preprocessing
-from sweep import get_sweep_config
+from sweep import get_sweep_config, get_tune_config
 from train import train_model
 from utils import get_available_models_by_type
 from video_prediction import make_video_prediction
@@ -29,7 +29,7 @@ TRAIN_CONFIG = {
     "pretrained_model": "",  # Options: model_id, model_name (for better wandb logging, use the model id)
     "train_data": "RAF-DB",  # Options: RAF-DB, AffectNet
     "preprocessing": "ImageNetNormalization",  # Options: ImageNetNormalization, Grayscale
-    "augmentations": "HorizontalFlip, RandomRotation, RandomCrop",
+    "augmentations": "HorizontalFlip, RandomRotation, RandomCrop, RandAugment, RandAugment",
     # Options: "HorizontalFlip", "RandomRotation", "RandomCrop", "TrivialAugmentWide", "RandAugment"
     "validation_split": 0.1,
     "learning_rate": 0.001,
@@ -57,26 +57,28 @@ ENSEMBLE_MODELS = ["8cp5wrtr_1", "zpwmo75q", "zpwmo75q", "npl99ug4", "h1zooiju",
 
 @app.command()
 def train(offline: bool = False, sweep: bool = False):
-    # check if validation path is valid
+    """Trains a model with the given configuration. If offline is True, wandb is disabled."""
+    # Check if validation path is valid
     if not os.path.exists(os.getenv("DATASET_TEST_PATH")):
         raise FileNotFoundError(f"Directory {os.getenv('DATASET_TEST_PATH')} not found. "
                                 f"Could not load validation dataset.")
 
-    # disable wandb if offline
+    # Disable wandb if offline
     os.environ["WANDB_MODE"] = "offline" if offline else "online"
 
     config = TRAIN_CONFIG
     with wandb.init(config=config, project="cvdl", entity=os.getenv("WANDB_ENTITY")):
-        # overwrite config with wandb config if sweep run
+        # Overwrite config with wandb config if sweep run
         if sweep:
             for key in wandb.config.as_dict():
+
                 config[key] = wandb.config.as_dict().get(key)
 
         model = train_model(config)
         print(f"Number of parameters: {sum(p.numel() for p in model.parameters())}"
               f" (Trainable: {sum(p.numel() for p in model.parameters() if p.requires_grad)})")
 
-        # test model and upload results to wandb if not a sweep run
+        # Test model and upload results to wandb if not a sweep run
         if not sweep:
             analyze_run_and_upload(config["model_name"])
 
@@ -89,7 +91,7 @@ def inference(model_name: str, data_path: str, output_path: str):
     if model_name not in available_models and model_name not in sum(available_models.values(), []):
         raise ValueError(f"Model name {model_name} not found in available models. Available models: {available_models}")
     model_id, results = apply_model(model_name, data_path)
-    # create name from model_name and timestamp and input files
+    # Create name from model_name and timestamp and input files
     timestamp = datetime.now().strftime("%Y%m%dT%H%M%S")
     folder_name = data_path.split("/")[-1]
     output_file_name = f"{folder_name}-{timestamp}-{model_id}.csv"
@@ -115,6 +117,9 @@ def demo(model_name: str, webcam: bool = False, cam_id: int = 0,
          show_processing: bool = True, explainability: bool = False,
          landmarks: bool = False, info: bool = True, codec: str = "XVID",
          output_ext: str = "avi"):
+    """Runs the model in a demo mode. If webcam is True, the camera is used. Otherwise, the input_video is used.
+    The processing is shown if show_processing is True. If explainability is True, the grad cam is shown.
+    If landmarks is True, the landmarks are shown. If info is True, the activation values are shown."""
     if not webcam and input_video.strip() == "":
         raise typer.BadParameter("Please specify an input video when not using the camera.")
 
@@ -149,6 +154,8 @@ def demo(model_name: str, webcam: bool = False, cam_id: int = 0,
 
 @app.command()
 def clip(output_dir: str = "data/clipped_affect_net", use_rafdb_format: bool = False):
+    """Clips the faces from the AffectNet dataset and saves them to the output_dir.
+    If use_rafdb_format is True, the RAF-DB format is used."""
     input_path = os.getenv("DATASET_AFFECT_NET_PATH")
     if not os.path.exists(input_path):
         raise typer.BadParameter("Dataset not found. Please set the DATASET_AFFECT_NET_PATH environment variable.")
@@ -186,6 +193,8 @@ def ensemble(data_path=os.getenv("DATASET_TEST_PATH")):
 
 @app.command()
 def sweep(sweep_id: str = "", count: int = 40):
+    """Initializes a sweep to train the model with different hyperparameters.
+    Returns the top1 and top3 accuracies and the confusion matrix."""
     sweep_config = get_sweep_config()
     entity = os.getenv("WANDB_ENTITY")
 
@@ -196,26 +205,59 @@ def sweep(sweep_id: str = "", count: int = 40):
 
 
 @app.command()
-def true_value_distributions(model_name: str, data_path: str = os.getenv("DATASET_RAF_DB_PATH"),
-                             output_path=os.getenv("ACTIVATION_VALUES_PATH")):
+def true_value_distributions(model_name: str, data_path: str = os.getenv("DATASET_RAF_DB_PATH"), config=None, plot=False):
     """Takes the model_name and data_path, loads the activation values and calculates the true value distributions."""
+    output_path = os.getenv("ACTIVATION_VALUES_PATH")
     activation_values_dict = get_activation_values(model_name, data_path, output_path)
-    get_avg_softmax_activation_values(activation_values_dict, output_path,
-                                      constant=20, temperature=0.5, threshold=24)
+    
+    # Use hyperparameters from config if provided, otherwise use default values
+    constant = config["constant"] if config else 20
+    temperature = config["temperature"] if config else 1.3
+    threshold = 29 if config else 23  # Option for sweep should be: config["threshold"], but put sufficiently high for experiment
+
+    get_avg_softmax_activation_values(activation_values_dict, output_path,constant=constant,
+                                       temperature=temperature, threshold=threshold, plot=plot)
 
 
 @app.command()
-def kl_analyze(model_name: str, data_path: str = os.getenv("DATASET_TEST_PATH")):
+def kl_analyze(model_name: str, data_path: str = os.getenv("DATASET_TEST_PATH"), config=None):
     """Takes the model_name and data_path, loads the true value distributions and calculates the kl-divergences.
     Returns the top1 and top3 accuracies and the confusion matrix."""
     output_path = os.getenv("ACTIVATION_VALUES_PATH")
-    above_df, kl_divergence_df, be_labels, ab_labels = get_kl_results(model_name, output_path, data_path, constant=20,
-                                                                      temperature=0.5, threshold=24)
-    print(len(ab_labels))  # outputs number of samples above threshold
+    
+    # Use hyperparameters from config if provided, otherwise use default values 
+    constant = config["constant"] if config else 20
+    temperature = 1 if config else 1.3  # Option for sweep should be: config["temperature"], but put to 1 for experiment
+    threshold = config["threshold"] if config else 19.5
+
+    above_df, kl_divergence_df, be_labels, ab_labels = get_kl_results(model_name, output_path, data_path, 
+                                                                      constant=constant, temperature=temperature, threshold=threshold)
+    print(len(ab_labels))  # Outputs number of samples above threshold
     top1, top3, pred_labels, true_labels, _ = kl_divergence_accuracies(kl_divergence_df, above_df, be_labels, ab_labels)
     conf_matrix = confusion_matrix(true_labels, pred_labels)
     print(conf_matrix)
-    print("Top 1 accuracy: ", top1, "Top 3 accuracy: ", top3)
+    print("Top 1 accuracy: ", top1, "Top 3 accuracy: ", top3)  
+    
+    return top1, top3
+
+
+@app.command()
+def distribution_tuning(model_name: str, sweep_id: str = "", count=100):
+    """Takes the model_name and initializes a sweep to tune the temperature and threshold hyperparameters.
+    Returns the top1 and top3 accuracies and the confusion matrix."""
+    sweep_config = get_tune_config()
+    if sweep_id == "":
+        sweep_id = wandb.sweep(sweep_config, project="cvdl", entity=os.getenv("WANDB_ENTITY"))
+
+    def tune_and_evaluate(config=None):
+        with wandb.init(config=config):
+            config = wandb.config
+            true_value_distributions(model_name, config=config, plot=False)
+            top1, top3 = kl_analyze(model_name, config=config)
+
+            wandb.log({"Top 1 accuracy": top1, "Top 3 accuracy": top3})
+
+    wandb.agent(sweep_id, function=tune_and_evaluate, project="cvdl", entity=os.getenv("WANDB_ENTITY"), count=count)
 
 
 @app.command()
