@@ -12,3 +12,6 @@ sweep_models/*
 sweep_model_7/*
 analyze_results/*
 analyze_results_7/*
+
+# keep README files in /data
+!data/**/README.md
