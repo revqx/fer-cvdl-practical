@@ -2,12 +2,16 @@ import os
 
 import cv2
 
+try:
+    FACE_CASCADE = cv2.CascadeClassifier("models/haarcascade_frontalface_default.xml")
+except RuntimeError:
+    FACE_CASCADE = None
+
 
 def clip_face(img):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    face_cascade = cv2.CascadeClassifier("cascades/haarcascade_frontalface_default.xml")
 
-    faces = face_cascade.detectMultiScale(gray, scaleFactor=1.3, minNeighbors=5)
+    faces = FACE_CASCADE.detectMultiScale(gray, scaleFactor=1.3, minNeighbors=5)
 
     was_clipped = False
     if len(faces) > 0:

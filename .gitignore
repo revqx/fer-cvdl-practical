@@ -19,3 +19,6 @@ analyze_results_7/*
 # keep model readme and chosen model
 !models/README.md
 !models/CustomEmotionModel3-20240207T033715-fu11xllu.pth
+
+# keep face detection model
+!models/version-RFB-320

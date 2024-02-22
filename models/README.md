@@ -30,3 +30,7 @@ python main.py inference fu11xllu ./data/test .
 ```
 
 Have fun! :)
+
+### Face Detection Model
+
+For face detection, we use a pre-trained Receptive Field Block Net (RFBNet) model, from [here](https://github.com/Linzaer/Ultra-Light-Fast-Generic-Face-Detector-1MB/blob/master/models/onnx/version-RFB-320.onnx).
