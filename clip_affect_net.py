@@ -2,14 +2,18 @@ import os
 
 import cv2
 
-try:
-    FACE_CASCADE = cv2.CascadeClassifier("models/haarcascade_frontalface_default.xml")
-except RuntimeError:
-    FACE_CASCADE = None
+FACE_CASCADE = None
 
 
 def clip_face(img):
+    global FACE_CASCADE
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+    if FACE_CASCADE is None:
+        if os.path.exists("models/haarcascade_frontalface_default.xml"):
+            FACE_CASCADE = cv2.CascadeClassifier("models/haarcascade_frontalface_default.xml")
+        else:
+            raise FileNotFoundError("Could not find haarcascade_frontalface_default.xml")
 
     faces = FACE_CASCADE.detectMultiScale(gray, scaleFactor=1.3, minNeighbors=5)
 
