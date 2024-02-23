@@ -1,18 +1,35 @@
 # CVDL – Facial Expression Recognition
 
-## Requirements
+## Getting Started
 
-1. Install the needed requirements using pip:
+1. Install the needed requirements e.g. using pip:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-2. Put the affectnet dataset into `./data/affectnet` and the rafdb dataset
-   into `./data/raf_db`. The given validation set should be put into `./data/test`. You can also change the paths
-   in `.env` to your liking.
+2. Create your own local `.env` file by copying the distributed file.
 
-Fully trained models can be downloaded from [here](https://nc.lessmann.dev/s/cLZnaz2wj2XwzPi).
+```bash
+cp .env.dist .env
+```
+
+3. Put the affectnet dataset into `./data/affectnet` and the rafdb dataset
+   into `./data/raf_db`. The given validation set should be put into `./data/test`. 
+   You can also change the paths in `.env` to your liking.
+
+4. Execute the `main.py`. Each subcommand also has a `--help` entry.
+
+```bash
+python main.py --help
+```
+
+5. Try the live video demonstration using your webcam and the already downloaded model.
+```bash
+python main.py demo fu11xllu
+```
+
+Further fully trained models can be downloaded from [here](https://nc.lessmann.dev/s/cLZnaz2wj2XwzPi).
 
 ## Inference
 
@@ -26,7 +43,7 @@ Arguments:
 - `<input-path>` root for all pictures to be tested
 - `<output-path>` destination for `.csv` with results
 
-## Train
+## Training
 
 ```bash
 python main.py train
@@ -68,42 +85,42 @@ Optional arguments:
 ## Explainability
 
 ```bash
-python main.py explain <model_name> --method <method> --window <window> --data_path <data_path> --examples <examples> --random <random> --path_contains <path_contains> --save_path <save_path>
+python main.py explain <model_name> --method <method> --window <window> --data-path <data-path> --examples <examples> --random <random> --path-contains <path-contains> --save-path <save-path>
 ```
 Arguments:
-- `<model_name>` The identifier of the model to explain.
+- `<model_name>` The identifier of the model to explain
 
 Optional Arguments:
-- `<method>` Specify the visual explanation method (default: 'gradcam').
-- `<window>` The size of the window for the explanation (default: 8).
-- `<data-path>` The path to the dataset for testing (default: value from environment variable DATASET_TEST_PATH).
-- `<examples>` The number of examples to explain (default: 5).
-- `<random>` Whether to choose examples randomly (default: True).
-- `<path-contains>` Specify a string that the example paths must contain (default: "").
-- `<save-path>` The path to save the explanation results (default: None).
+- `<method>` Specify the visual explanation method (default: 'gradcam')
+- `<window>` The size of the window for the explanation (default: 8)
+- `<data-path>` The path to the dataset for testing (default: value from environment variable DATASET_TEST_PATH)
+- `<examples>` The number of examples to explain (default: 5)
+- `<random>` Whether to choose examples randomly (default: True)
+- `<path-contains>` Specify a string that the example paths must contain (default: "")
+- `<save-path>` The path to save the explanation results (default: None)
 
 
 ```bash
-python main.py explain_image <model_name> --window <window> --data_path <data_path> --path_contains <path_contains> --save_path <save_path>
+python main.py explain_image <model-name> --window <window> --data-path <data-path> --path_contains <path-contains> --save-path <save-path>
 ```
 Arguments:
-- `<model-name>` The identifier of the model to explain.
+- `<model-name>` The identifier of the model to explain
 
 Optional Arguments
-- `<window>` The size of the window for the explanation (default: 8).
-- `<data-path>`: The path to the dataset for testing (default: value from environment variable DATASET_TEST_PATH).
-- `<path-contains>` Specify a string that the example paths must contain (default: "").
-- `<save-path>` The path to save the explanation results (default: None).
+- `<window>` The size of the window for the explanation (default: 8)
+- `<data-path>`: The path to the dataset for testing (default: value from environment variable DATASET_TEST_PATH)
+- `<path-contains>` Specify a string that the example paths must contain (default: "")
+- `<save-path>` The path to save the explanation results (default: None)
 
 ```bash
-python main.py pca <model_name> --data_path <data_path> --softmax <softmax>
+python main.py pca <model-name> --data-path <data-path> --softmax <softmax>
 ```
 Arguments:
-- `<model-name>` The identifier of the model to visualize PCA.
+- `<model-name>` The identifier of the model to visualize PCA
 
 Optional Arguments:
-- `<data-path>` The path to the dataset for testing (default: value from environment variable DATASET_TEST_PATH).
--  `<softmax>` Whether to apply softmax activation before plotting (default: False).
+- `<data-path>` The path to the dataset for testing (default: value from environment variable DATASET_TEST_PATH)
+-  `<softmax>` Whether to apply softmax activation before plotting (default: False)
 
 
 ## Other utilities

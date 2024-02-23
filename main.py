@@ -112,12 +112,12 @@ def analyze(model_name: str, data_path: str = os.getenv("DATASET_TEST_PATH")):
 
 
 @app.command()
-def demo(model_name: str, webcam: bool = False, cam_id: int = 0,
+def demo(model_name: str, webcam: bool = True, cam_id: int = 0,
          input_video: str = "",
          show_processing: bool = True, explainability: bool = False,
          landmarks: bool = False, info: bool = True, codec: str = "XVID",
          output_ext: str = "avi"):
-    """Runs the model in a demo mode. If webcam is True, the camera is used. Otherwise, the input_video is used.
+    """Runs the model in a demo mode. If input_video is not specified, the webcam is used.
     The processing is shown if show_processing is True. If explainability is True, the grad cam is shown.
     If landmarks is True, the landmarks are shown. If info is True, the activation values are shown."""
     if not webcam and input_video.strip() == "":
@@ -296,8 +296,10 @@ def explain(model_name: str, method: str = 'gradcam', window: int = 8, data_path
 @app.command()
 def explain_image(model_name: str, window: int = 8, data_path: str = os.getenv("DATASET_TEST_PATH"),
                   path_contains: str = "", save_path: str = None):
-    """Use all methods to explain the model. Displays in matplotlib grid."""
+    """Use all methods to explain the model. To specify the image use the path-contains flag. Displays in matplotlib grid."""
     model_id, model, preprocessing = load_model_and_preprocessing(model_name)
+    if window <= 10:
+        print("This might take up to a minute. To speed it up, increase the window size for parital occlusion.")
     explain_all(model, data_path, path_contains=path_contains, save_path=save_path, window_size=(window, window))
 
 

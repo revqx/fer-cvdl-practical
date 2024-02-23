@@ -123,8 +123,8 @@ def load_model_and_preprocessing(model_name: str) -> (str, torch.nn.Module, torc
 
 def get_available_models():
     path = os.getenv("MODEL_SAVE_PATH")
-    if not os.path.exists(path):
-        raise EnvironmentError("Path for saved models not specified!")
+    if path is None or not os.path.exists(path):
+        raise EnvironmentError("Path for saved models not specified! Make sure to copy the .env.dist file to a local .env file.")
     # all files in folder at path
     pattern = os.path.join(path, f"*-*-*.pth")
     model_files = glob.glob(pattern)
