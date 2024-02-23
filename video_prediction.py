@@ -3,7 +3,6 @@ import dlib
 import numpy as np
 import onnxruntime as ort
 import torch
-from onnxruntime.capi.onnxruntime_pybind11_state import NoSuchFile
 
 from gradcam import overlay
 from inference import load_model_and_preprocessing
@@ -32,12 +31,8 @@ The model can be downloaded from:
 https://github.com/Linzaer/Ultra-Light-Fast-Generic-Face-Detector-1MB/blob/master/models/onnx/version-RFB-320.onnx
 """
 ONNX_PATH = "models/version-RFB-320.onnx"
-try:
-    ORT_SESSION = ort.InferenceSession(ONNX_PATH)
-    INPUT_NAME = ORT_SESSION.get_inputs()[0].name
-except NoSuchFile:
-    ORT_SESSION = None
-    INPUT_NAME = None
+ORT_SESSION = None
+INPUT_NAME = None
 
 
 def initialize_model(model_name: str):
@@ -497,6 +492,9 @@ def main_loop(
         out (cv2.VideoWriter) : the video output.
     """
     print("Starting video prediction...")
+    global ORT_SESSION, INPUT_NAME
+    ORT_SESSION = ort.InferenceSession(ONNX_PATH)
+    INPUT_NAME = ORT_SESSION.get_inputs()[0].name
 
     while True:
         has_frame, frame = cap.read()
